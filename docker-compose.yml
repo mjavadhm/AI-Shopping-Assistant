@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # 1. سرویس اپلیکیشن اصلی شما (FastAPI)
+  app:
+    build: .  # از Dockerfile موجود در همین پوشه استفاده کن
+    container_name: torob_assistant_app
+    restart: unless-stopped
+    ports:
+      - "8000:80"  # پورت 8000 کامپیوتر شما را به پورت 80 کانتینر وصل می‌کند
+    env_file:
+      - .env  # متغیرهای محیطی را از این فایل بخوان
+    depends_on:
+      - postgres_db
+      - chroma_db
+    volumes:
+      - ./app:/code/app # کد شما را به صورت زنده با داخل کانتینر سینک می‌کند
+
+  # 2. سرویس دیتابیس PostgreSQL
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=torob
+      - POSTGRES_PASSWORD=torob
+      - POSTGRES_DB=torob_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 3. سرویس دیتابیس Vector (ChromaDB)
+  chroma_db:
+    image: chromadb/chroma:latest
+    container_name: chroma_db
+    restart: unless-stopped
+    ports:
+      - "8001:8000" # پورت 8001 کامپیوتر شما را به پورت 8000 کروما وصل می‌کند
+
+volumes:
+  postgres_data:

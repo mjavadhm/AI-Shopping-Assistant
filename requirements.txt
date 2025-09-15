@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+pydantic
+pandas
+pyarrow
+sqlalchemy  
+psycopg2-binary
