@@ -24,7 +24,7 @@ async def chat_handler(
     This endpoint handles the chat requests and implements the logic for different scenarios.
     """
     logger.info(f"Received chat request with chat_id: {request.chat_id}")
-    logger.debug(f"Request body: {request.model_dump()}")
+    logger.info(f"--> INCOMING Request Body: {request.model_dump()}")
 
     response = await check_scenario_one(request, db=db)        
     logger.info(f"Sending response for chat_id: {request.chat_id}")

@@ -15,6 +15,7 @@ services:
     #   - chroma_db
     volumes:
       - ./app:/code/app
+      - ./logs:/app/logs
 
 #   postgres_db:
 #     image: postgres:15-alpine

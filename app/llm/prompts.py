@@ -35,8 +35,6 @@ Your single objective is to identify and extract the **exact and complete produc
 ---
 
 ### YOUR TASK ###
-Now, process the following message:
-
-**message:** "{user_message_text}"
+Now, process the message
 """,
 }

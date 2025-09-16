@@ -1,5 +1,6 @@
 import logging
 import sys
+import os
 
 APP_LOGGER_NAME = "ai_shopping_assistant"
 
@@ -18,7 +19,11 @@ def setup_logger(level=logging.INFO):
     if not logger.handlers:
         logger.addHandler(stream_handler)
         
-    file_handler = logging.FileHandler("app.log")
+    log_dir = "logs"
+    os.makedirs(log_dir, exist_ok=True)
+    log_file_path = os.path.join(log_dir, "app.log")
+    
+    file_handler = logging.FileHandler(log_file_path)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
