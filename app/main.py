@@ -23,6 +23,7 @@ async def chat_handler(
     """
     This endpoint handles the chat requests and implements the logic for different scenarios.
     """
+    logger.info("------------------------------------------------------------------------------------")
     logger.info(f"Received chat request with chat_id: {request.chat_id}")
     logger.info(f"--> INCOMING Request Body: {request.model_dump()}")
 

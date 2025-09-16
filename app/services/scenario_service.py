@@ -51,6 +51,7 @@ async def scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
         systemprompt=system_prompt,
         model="gpt-4.1-mini"
     )
+    logger.info(f"llm_response: {llm_response}")
     found_keys = await repository.search_product_by_name(db=db, product_name=llm_response)
-    
+    logger.info(f"found_keys: {found_keys}")
     return ChatResponse(base_random_keys=found_keys)

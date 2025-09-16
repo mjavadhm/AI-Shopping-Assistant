@@ -19,7 +19,7 @@ async def search_product_by_name(db: AsyncSession, product_name: str) -> Optiona
         or None if no products are found.
     """
     query = select(models.BaseProduct.random_key).where(
-        models.BaseProduct.persian_name.ilike(f"%{product_name}%")
+        models.BaseProduct.persian_name == product_name
     )
     
     result = await db.execute(query)
