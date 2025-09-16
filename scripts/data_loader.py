@@ -4,20 +4,20 @@ from sqlalchemy import create_engine
 import time
 
 from app.core.logger import logger
+from app.core.config import settings
 
 # --- Environment & Constants ---
-DATABASE_URL = os.getenv("DATABASE_URL")
 DATA_DIR = "./data"
 
 def get_db_engine():
     """Establishes a connection to the database with a retry mechanism."""
-    if not DATABASE_URL:
+    if not settings.DATABASE_URL:
         logger.error("❌ DATABASE_URL environment variable is not set.")
         return None
         
     for attempt in range(5):
         try:
-            engine = create_engine(DATABASE_URL)
+            engine = create_engine(settings.DATABASE_URL)
             with engine.connect():
                 logger.info("✅ Database connection successful.")
                 return engine
