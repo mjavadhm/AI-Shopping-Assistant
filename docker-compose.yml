@@ -10,31 +10,31 @@ services:
       - "8000:80"
     env_file:
       - .env
-    depends_on:
-      - postgres_db
-      - chroma_db
+    # depends_on:
+    #   - postgres_db
+    #   - chroma_db
     volumes:
       - ./app:/code/app
 
-  postgres_db:
-    image: postgres:15-alpine
-    container_name: postgres_db
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_USER=torob
-      - POSTGRES_PASSWORD=torob
-      - POSTGRES_DB=torob_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+#   postgres_db:
+#     image: postgres:15-alpine
+#     container_name: postgres_db
+#     restart: unless-stopped
+#     ports:
+#       - "5432:5432"
+#     environment:
+#       - POSTGRES_USER=torob
+#       - POSTGRES_PASSWORD=torob
+#       - POSTGRES_DB=torob_db
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
 
-  chroma_db:
-    image: chromadb/chroma:latest
-    container_name: chroma_db
-    restart: unless-stopped
-    ports:
-      - "8001:8000"
+#   chroma_db:
+#     image: chromadb/chroma:latest
+#     container_name: chroma_db
+#     restart: unless-stopped
+#     ports:
+#       - "8001:8000"
 
-volumes:
-  postgres_data:
+# volumes:
+#   postgres_data:
