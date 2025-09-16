@@ -2,7 +2,7 @@ from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.openai_service import simple_openai_gpt_request
 from app.llm.prompts import SCENARIO_ONE_PROMPTS
 from app.core.logger import logger
-import requests
+
 
 async def check_scenario_one(request: ChatRequest) -> ChatResponse:
     """
