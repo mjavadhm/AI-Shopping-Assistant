@@ -6,4 +6,3 @@ pyarrow
 sqlalchemy  
 psycopg2-binary
 pydantic-settings
-asyncpg
