@@ -38,7 +38,7 @@ async def check_scenario_one(request: ChatRequest) -> ChatResponse:
         logger.error(e,exc_info=True)
 
 async def scenario_one(request: ChatRequest) -> ChatResponse:
-    system_prompt = SCENARIO_ONE_PROMPTS.get("system", "")
+    system_prompt = SCENARIO_ONE_PROMPTS.get("main_prompt", "")
     user_message = request.messages[-1].content.strip()
 
     llm_response = await simple_openai_gpt_request(
