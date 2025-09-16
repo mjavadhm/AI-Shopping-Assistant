@@ -28,6 +28,6 @@ async def chat_handler(
 
     response = await check_scenario_one(request, db=db)        
     logger.info(f"Sending response for chat_id: {request.chat_id}")
-    logger.debug(f"Response body: {response.model_dump()}")
+    logger.info(f"Response body: {response.model_dump()}")
     
     return response
