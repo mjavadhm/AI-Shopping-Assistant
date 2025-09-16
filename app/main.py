@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from schemas.chat import ChatRequest, ChatResponse
-from core.logger import logger
+from app.schemas.chat import ChatRequest, ChatResponse
+from app.core.logger import logger
 app = FastAPI()
 
 @app.get("/")
