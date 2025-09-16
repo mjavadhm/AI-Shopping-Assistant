@@ -49,8 +49,8 @@ async def simple_openai_gpt_request(
             messages=messages,
         )
 
-        input_tokens = response.usage.prompt_tokens
-        output_tokens = response.usage.completion_tokens
+        # input_tokens = response.usage.prompt_tokens
+        # output_tokens = response.usage.completion_tokens
 
         return response.choices[0].message.content
     except Exception as e:

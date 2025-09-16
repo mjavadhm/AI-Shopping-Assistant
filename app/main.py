@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from .schemas.chat import ChatRequest, ChatResponse
 from .core.logger import logger
+from .llm.prompts import SCENARIO_ONE_PROMPTS
 app = FastAPI()
 
 @app.get("/")
@@ -32,7 +33,8 @@ async def chat_handler(request: ChatRequest):
         key = last_message.replace("return member random key:", "").strip()
         response = ChatResponse(member_random_keys=[key])
 
-    
+    else:
+        
     logger.info(f"Sending response for chat_id: {request.chat_id}")
     logger.debug(f"Response body: {response.model_dump()}")
     
