@@ -1,10 +1,15 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.openai_service import simple_openai_gpt_request
 from app.llm.prompts import SCENARIO_ONE_PROMPTS
+from app.db.session import get_db
+from app.db import repository
 from app.core.logger import logger
 
 
-async def check_scenario_one(request: ChatRequest) -> ChatResponse:
+async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     """
     Check if the request matches Scenario One and process it accordingly.
 
@@ -31,13 +36,13 @@ async def check_scenario_one(request: ChatRequest) -> ChatResponse:
 
         else:
             # if request.chat_id == "scenario-one":
-            response = await scenario_one(request)
+            response = await scenario_one(request, db=db)
             
         return response
     except Exception as e:
         logger.error(e,exc_info=True)
 
-async def scenario_one(request: ChatRequest) -> ChatResponse:
+async def scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     system_prompt = SCENARIO_ONE_PROMPTS.get("main_prompt", "")
     user_message = request.messages[-1].content.strip()
 
@@ -46,5 +51,6 @@ async def scenario_one(request: ChatRequest) -> ChatResponse:
         systemprompt=system_prompt,
         model="gpt-4.1-mini"
     )
-
-    return ChatResponse(message=llm_response)
+    found_keys = await repository.search_product_by_name(db=db, product_name=llm_response)
+    
+    return ChatResponse(base_random_keys=found_keys)
