@@ -1,12 +1,15 @@
 import os
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 import time
+import json
+import numpy as np
+
 
 from app.core.logger import logger
 from app.core.config import settings
 
-# --- Environment & Constants ---
+
 DATA_DIR = "./data"
 
 def get_db_engine():
@@ -29,25 +32,41 @@ def get_db_engine():
     return None
 
 def load_parquet_files(engine):
-    """Loads all .parquet files from the DATA_DIR into the database."""
-    if not os.path.isdir(DATA_DIR):
-        logger.error(f"❌ Data directory not found at: {DATA_DIR}")
-        return
+
+    inspector = inspect(engine)
+    existing_tables = inspector.get_table_names()
+    logger.info(f"Tables already present in the database: {existing_tables}")
 
     for filename in os.listdir(DATA_DIR):
         if filename.endswith(".parquet"):
-            file_path = os.path.join(DATA_DIR, filename)
             table_name = os.path.splitext(filename)[0].lower()
+
             
+            if table_name in existing_tables:
+                logger.info(f"⏭️ Table '{table_name}' already exists. Skipping file.")
+                continue  
+
+            file_path = os.path.join(DATA_DIR, filename)
             logger.info(f"Processing file: {filename}...")
+            
             try:
                 df = pd.read_parquet(file_path)
                 
+                
+                for col in df.columns:
+                    
+                    if df[col].dtype == 'object':
+                        
+                        if any(isinstance(i, np.ndarray) for i in df[col].dropna()):
+                            logger.info(f"Converting numpy arrays in column '{col}' to JSON strings.")
+                            
+                            df[col] = df[col].apply(lambda x: json.dumps(x.tolist()) if isinstance(x, np.ndarray) else x)
+
                 logger.info(f"Importing data into table: '{table_name}'...")
                 df.to_sql(
                     table_name,
                     engine,
-                    if_exists='replace',
+                    if_exists='replace', 
                     index=False,
                     chunksize=10000
                 )
