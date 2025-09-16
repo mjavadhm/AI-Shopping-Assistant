@@ -17,10 +17,7 @@ Your single objective is to identify and extract the **exact and complete produc
 4.  **Handle "Not Found" Case:** If the user's message does not contain a request for a specific product, or if it's a general greeting, you must return the single word: `NULL`.
 
 ### EXAMPLES (FEW-SHOT LEARNING) ###
----
-**message:** "لطفاً دراور D14 چهار کشو را برای من تهیه کنید"
-**product:** "دراور D14 چهار کشو"
----
+
 **message:** "من یک گوشی سامسونگ گلکسی اس ۲۳ اولترا نیاز دارم"
 **product:** "گوشی سامسونگ گلکسی اس ۲۳ اولترا"
 ---
