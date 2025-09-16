@@ -10,7 +10,7 @@ def read_root():
     return {"Hello": "World"}
 
 @app.post("/chat", response_model=ChatResponse)
-def chat_handler(request: ChatRequest):
+async def chat_handler(request: ChatRequest):
     """
     This endpoint handles the chat requests and implements the logic for different scenarios.
     """
