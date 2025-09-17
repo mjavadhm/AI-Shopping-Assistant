@@ -8,10 +8,14 @@ from .core.logger import logger
 from app.core.json_logger import log_request_response
 from .services.scenario_service import check_scenario_one
 from .db.session import get_db 
+from .services.openai_service import total_cost_per_session, current_request_cost
+
 app = FastAPI()
 
 @app.middleware("http")
 async def json_logging_middleware(request: Request, call_next):
+    global current_request_cost
+    current_request_cost = 0.0
     request_body_json = None
     try:
         request_body_bytes = await request.body()
@@ -41,6 +45,7 @@ async def json_logging_middleware(request: Request, call_next):
     log_data = {
         "request": request_body_json,
         "response": response_body_json,
+        "openai_cost": current_request_cost
     }
 
     task = BackgroundTask(log_request_response, log_data=log_data)
@@ -52,6 +57,11 @@ async def json_logging_middleware(request: Request, call_next):
         media_type=response.media_type,
         background=task,
     )
+
+@app.get("/total-cost")
+async def get_total_cost():
+    """Returns the total accumulated cost of all OpenAI API calls."""
+    return {"total_cost": total_cost_per_session}
 
 @app.get("/")
 def read_root():
