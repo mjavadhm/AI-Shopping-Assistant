@@ -3,8 +3,9 @@ from typing import Optional, List, Dict, Any
 
 from app.core.config import settings
 from app.core.logger import logger
-from app.core.cost_manager import current_request_cost_var
 
+total_cost_per_session = 0.0
+current_request_cost = 0.0
 if settings.OPENAI_API_KEY:
     async_client = AsyncOpenAI(
         api_key=settings.OPENAI_API_KEY,
@@ -141,6 +142,7 @@ def get_embeddings(texts, model="text-embedding-3-small", dimensions=512):
 
 def calculate_gpt_cost(input_tokens, output_tokens, model = 'gpt-4o-mini'):
     try:
+        global total_cost_per_session, current_request_cost
         if model == 'gpt-4o':
             input_token_cost_per_million = 2.5
             output_token_cost_per_million = 10
@@ -169,8 +171,8 @@ def calculate_gpt_cost(input_tokens, output_tokens, model = 'gpt-4o-mini'):
         output_cost = (output_tokens / 1_000_000) * output_token_cost_per_million
         
         total_cost = input_cost + output_cost
-        current_cost = current_request_cost_var.get()
-        current_request_cost_var.set(current_cost + total_cost)
+        total_cost_per_session += total_cost
+        current_request_cost += total_cost
         
         return input_tokens, output_tokens, total_cost
     except Exception as e:
