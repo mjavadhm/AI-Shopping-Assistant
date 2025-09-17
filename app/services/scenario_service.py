@@ -2,9 +2,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 from app.schemas.chat import ChatRequest, ChatResponse
-from app.services.openai_service import simple_openai_gpt_request
+from app.services.openai_service import simple_openai_gpt_request, simple_openai_gpt_request_with_tools
 from app.llm.prompts import SCENARIO_ONE_PROMPTS, ROUTER_PROMPT
 from app.db.session import get_db
+from app.llm.tools.definitions import FIRST_SCENARIO_TOOLS
+from app.llm.tools.handler import ToolHandler
 from app.db import repository
 from app.core.logger import logger
 
@@ -71,12 +73,26 @@ async def classify_scenario(request: ChatRequest) -> str:
 async def scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     system_prompt = SCENARIO_ONE_PROMPTS.get("main_prompt", "")
     user_message = request.messages[-1].content.strip()
-
-    llm_response = await simple_openai_gpt_request(
+    tool_handler = ToolHandler(db=db)
+    llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
         message=user_message,
         systemprompt=system_prompt,
-        model="gpt-4.1-mini"
+        model="gpt-4.1-mini",
+        tools=FIRST_SCENARIO_TOOLS
     )
+    tools_answer = []
+    while True:
+        if tool_calls:
+            tools_answer = await tool_handler.handle_tool_call(tool_calls, tools_answer)
+            
+            llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
+                message=user_message,
+                systemprompt=system_prompt,
+                model="gpt-4.1-mini",
+                tools=FIRST_SCENARIO_TOOLS
+            )
+        else:
+            break
     logger.info(f"llm_response: {llm_response}")
     found_keys = await repository.search_product_by_name(db=db, product_name=llm_response)
     logger.info(f"found_keys: {found_keys}")

@@ -1,16 +1,20 @@
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAI
 from typing import Optional, List, Dict, Any
 
 from app.core.config import settings
 from app.core.logger import logger
 
 if settings.OPENAI_API_KEY:
-    client = AsyncOpenAI(
+    async_client = AsyncOpenAI(
+        api_key=settings.OPENAI_API_KEY,
+        base_url=settings.OPENAI_API_BASE,
+    )
+    client = OpenAI(
         api_key=settings.OPENAI_API_KEY,
         base_url=settings.OPENAI_API_BASE,
     )
 else:
-    client = None
+    async_client = None
     logger.warning("⚠️ OpenAI API key or base URL is not set. LLM service will be disabled.")
 
 
@@ -44,7 +48,7 @@ async def simple_openai_gpt_request(
         if message:
             messages.append({"role": "user", "content": message})
 
-        response = await client.chat.completions.create(
+        response = await async_client.chat.completions.create(
             model=model,
             messages=messages,
         )
@@ -62,8 +66,9 @@ async def simple_openai_gpt_request_with_tools(
     systemprompt: str,
     tools: List[Dict[str, Any]],
     model: str = 'gpt-4o-mini',
-    chat_history: Optional[List[dict]] = None
-) -> Dict[str, Any]:
+    chat_history: Optional[List[dict]] = None,
+    tools_answer=None
+):
     """
     Sends a chat completion request with tools to OpenAI GPT model asynchronously.
 
@@ -83,8 +88,8 @@ async def simple_openai_gpt_request_with_tools(
     Raises:
         Exception: If the request fails or an error occurs.
     """
-    if not client:
-        raise Exception("OpenAI client is not initialized. Please check your API key and base URL.")
+    if not async_client:
+        raise Exception("OpenAI async_client is not initialized. Please check your API key and base URL.")
     
     try:
         messages = []
@@ -94,8 +99,9 @@ async def simple_openai_gpt_request_with_tools(
             messages += chat_history
         if message:
             messages.append({"role": "user", "content": message})
-
-        response = await client.chat.completions.create(
+        if tools_answer:
+            messages += tools_answer
+        response = await async_client.chat.completions.create(
             model=model,
             messages=messages,
             tools=tools,
@@ -103,27 +109,22 @@ async def simple_openai_gpt_request_with_tools(
         )
 
         logger.info(f"Token usage - Input: {response.usage.prompt_tokens}, Output: {response.usage.completion_tokens}")
+                
+        result = response.choices[0].message.content
         
-        choice = response.choices[0]
+        tool_calls = response.choices[0].message.tool_calls
         
-        result = {
-            "content": choice.message.content,
-            "tool_calls": [],
-            "finish_reason": choice.finish_reason
-        }
         
-        if choice.message.tool_calls:
-            for tool_call in choice.message.tool_calls:
-                result["tool_calls"].append({
-                    "id": tool_call.id,
-                    "function": {
-                        "name": tool_call.function.name,
-                        "arguments": tool_call.function.arguments
-                    }
-                })
-        
-        return result
+        return result, tool_calls
         
     except Exception as e:
         logger.error(f"Error in simple_openai_gpt_request_with_tools: {e}")
         raise
+    
+def get_embeddings(texts, model="text-embedding-3-small", dimensions=512):
+    response = client.embeddings.create(
+        input=texts,
+        model=model,
+        dimensions=dimensions
+    )
+    return [embedding.embedding for embedding in response.data]
