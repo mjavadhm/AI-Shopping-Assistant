@@ -33,25 +33,48 @@ async def search_product_by_name(db: AsyncSession, product_name: str) -> Optiona
         return keys
         
     return None
-
 async def search_products_by_keywords(db: AsyncSession, keywords: List[str]) -> Optional[List[str]]:
     """
-    Asynchronously searches for products by a list of keywords in their Persian name.
+    Asynchronously searches for products using Full-Text Search.
     It returns a list of product names that contain ALL of the specified keywords.
     """
     if not keywords:
         return None
 
-    # We create a list of `ilike` conditions to perform a case-insensitive "contains" search.
-    # The `and_` ensures that the product name must contain ALL keywords.
-    conditions = and_(*[models.BaseProduct.persian_name.ilike(f"%{keyword}%") for keyword in keywords])
-    
-    query = select(models.BaseProduct.persian_name).where(conditions)
+    # Transform keywords into a format suitable for to_tsquery
+    # ' & '.join(keywords) creates a query for "keyword1 AND keyword2 AND ..."
+    # This ensures all keywords must be present in the product name.
+    search_query = " & ".join(keywords)
+
+    # Use the '@@' operator for full-text search against the TSVECTOR column.
+    # We use 'simple' configuration which is suitable for Persian language.
+    query = select(models.BaseProduct.persian_name).where(
+        models.BaseProduct.persian_name_tsv.op('@@')(to_tsquery('simple', search_query))
+    )
     
     result = await db.execute(query)
     product_names = result.scalars().all()
     
     return product_names if product_names else None
+
+# async def search_products_by_keywords(db: AsyncSession, keywords: List[str]) -> Optional[List[str]]:
+#     """
+#     Asynchronously searches for products by a list of keywords in their Persian name.
+#     It returns a list of product names that contain ALL of the specified keywords.
+#     """
+#     if not keywords:
+#         return None
+
+#     # We create a list of `ilike` conditions to perform a case-insensitive "contains" search.
+#     # The `and_` ensures that the product name must contain ALL keywords.
+#     conditions = and_(*[models.BaseProduct.persian_name.ilike(f"%{keyword}%") for keyword in keywords])
+    
+#     query = select(models.BaseProduct.persian_name).where(conditions)
+    
+#     result = await db.execute(query)
+#     product_names = result.scalars().all()
+    
+#     return product_names if product_names else None
 
 async def get_product_features_by_name(db: AsyncSession, product_name: str) -> Optional[dict]:
     

@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask
 import json
+import asyncio
 
 from .schemas.chat import ChatRequest, ChatResponse
 from .core.logger import logger
@@ -79,7 +80,7 @@ async def chat_handler(
     logger.info(f"Received chat request with chat_id: {request.chat_id}")
     logger.info(f"--> INCOMING Request Body: {request.model_dump()}")
 
-    response = await check_scenario_one(request, db=db)        
+    response = await asyncio.wait_for(check_scenario_one(request, db=db), timeout=30.0)        
     logger.info(f"Sending response for chat_id: {request.chat_id}")
     logger.info(f"Response body: {response.model_dump()}")
     

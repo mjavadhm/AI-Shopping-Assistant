@@ -5,9 +5,10 @@ from sqlalchemy import (
     Float,
     Boolean,
     DateTime,
-    ForeignKey
+    ForeignKey,
+    Index
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR 
 from sqlalchemy.orm import declarative_base, relationship
 
 
@@ -73,6 +74,19 @@ class BaseProduct(Base):
     persian_name = Column(String, index=True)
     extra_features = Column(JSONB)
     members = Column(JSONB)
+
+    # Add the new TSVECTOR column for full-text search
+    persian_name_tsv = Column(TSVECTOR)
+
+    # Define the GIN index on the new column
+    __table_args__ = (
+        Index(
+            'ix_base_products_persian_name_tsv',
+            persian_name_tsv,
+            postgresql_using='gin'
+        ),
+    )
+
 
 class Member(Base):
     """
