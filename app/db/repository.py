@@ -4,6 +4,7 @@ from typing import List, Optional
 from . import models
 from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
+from sqlalchemy.dialects.postgresql import to_tsquery
 
 async def search_product_by_name(db: AsyncSession, product_name: str) -> Optional[List[str]]:
     """
