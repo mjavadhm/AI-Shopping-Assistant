@@ -80,7 +80,7 @@ async def chat_handler(
     logger.info(f"Received chat request with chat_id: {request.chat_id}")
     logger.info(f"--> INCOMING Request Body: {request.model_dump()}")
 
-    response = await asyncio.wait_for(check_scenario_one(request, db=db), timeout=28.0)        
+    response = await asyncio.wait_for(check_scenario_one(request, db=db), timeout=30.0)        
     logger.info(f"Sending response for chat_id: {request.chat_id}")
     logger.info(f"Response body: {response.model_dump()}")
     
