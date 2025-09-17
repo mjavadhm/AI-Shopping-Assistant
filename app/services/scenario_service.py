@@ -134,7 +134,7 @@ async def classify_scenario(request: ChatRequest) -> Tuple[str, List[str], List[
 async def scenario_two(request: ChatRequest, db: AsyncSession, found_key) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
     
-    product = await repository.get_product_by_random_key(db, first_key)
+    product = await repository.get_product_by_random_key(db, found_key)
     
     message = f"user input:{user_message}\n\nproduct_feautures:{str(product.extra_features)}"
     system_prompt = SCENARIO_TWO_PROMPTS.get("main_prompt_step_2", "")
@@ -189,6 +189,7 @@ async def scenario_three(request: ChatRequest, db: AsyncSession, found_key) -> C
         user_message=user_message,
         context_str=context_str
     )
+    logger.info(f"-> context_str:\n{context_str}")
 
     llm_response_code = await simple_openai_gpt_request(
         message='',
