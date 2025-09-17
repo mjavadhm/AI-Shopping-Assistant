@@ -42,13 +42,19 @@ async def search_products_by_keywords(db: AsyncSession, keywords: List[str]) -> 
     if not keywords:
         return None
 
-    # Transform keywords into a format suitable for to_tsquery
-    # ' & '.join(keywords) creates a query for "keyword1 AND keyword2 AND ..."
-    # This ensures all keywords must be present in the product name.
-    search_query = " & ".join(keywords)
+    # --- START OF FIX ---
+    # Process keywords to handle multi-word phrases correctly.
+    processed_keywords = []
+    for keyword in keywords:
+        # Split phrases like "فلاور بگ" into individual words ["فلاور", "بگ"]
+        processed_keywords.extend(keyword.split())
+
+    # Join all individual words with the '&' operator for the tsquery.
+    # Example: ['فلاور', 'بگ', 'قرمز'] becomes 'فلاور & بگ & قرمز'
+    search_query = " & ".join(processed_keywords)
+    # --- END OF FIX ---
 
     # Use the '@@' operator for full-text search against the TSVECTOR column.
-    # We use 'simple' configuration which is suitable for Persian language.
     query = select(models.BaseProduct.persian_name).where(
         models.BaseProduct.persian_name_tsv.op('@@')(to_tsquery('simple', search_query))
     )
