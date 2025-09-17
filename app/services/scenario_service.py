@@ -200,7 +200,7 @@ async def scenario_three(request: ChatRequest, db: AsyncSession, found_key) -> C
     llm_response = await simple_openai_gpt_request(
         message='',
         systemprompt=final_prompt,
-        model="gpt-5",
+        model="gpt-4.1",
     )
     logger.info(f"-> Raw response from LLM: {llm_response}")
     final_answer = parse_llm_response_to_number(llm_response)
