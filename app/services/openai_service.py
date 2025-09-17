@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any
 
 from app.core.config import settings
 from app.core.logger import logger
-#############
+
 total_cost_per_session = 0.0
 current_request_cost = 0.0
 if settings.OPENAI_API_KEY:
