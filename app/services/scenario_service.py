@@ -115,14 +115,24 @@ async def scenario_three(request: ChatRequest, db: AsyncSession) -> ChatResponse
     if not product or not product.members:
         raise HTTPException(status_code=404, detail=f"No sellers found for product: {first_key}")
 
-    shop_ids = [member['shop_id'] for member in product.members if 'shop_id' in member]
+    try:
+        members_list = json.loads(product.members)
+        if not isinstance(members_list, list):
+             raise HTTPException(status_code=500, detail="Members data is not a list.")
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Failed to decode members JSON.")
+
+    if not members_list:
+        raise HTTPException(status_code=404, detail=f"Seller list is empty for product: {first_key}")
+
+    shop_ids = [member.get('shop_id') for member in members_list if member.get('shop_id') is not None]
     
     shops_with_details = await repository.get_shops_with_details_by_ids(db, list(set(shop_ids)))
     
     shop_details_map = {shop.id: shop for shop in shops_with_details}
 
     sellers_context = []
-    for member_data in product.members:
+    for member_data in members_list:
         shop_id = member_data.get('shop_id')
         shop_info = shop_details_map.get(shop_id)
 
@@ -138,19 +148,23 @@ async def scenario_three(request: ChatRequest, db: AsyncSession) -> ChatResponse
          raise HTTPException(status_code=404, detail=f"Could not retrieve complete seller details for product: {first_key}")
 
     context_str = json.dumps(sellers_context, ensure_ascii=False, indent=2)
+
     final_prompt = SCENARIO_THREE_PROMPTS["final_prompt_template"].format(
         user_message=user_message,
         context_str=context_str
     )
     system_prompt = SCENARIO_THREE_PROMPTS["system_prompt"]
+
     llm_response = await simple_openai_gpt_request(
         message=final_prompt,
         systemprompt=system_prompt,
         model="gpt-4.1-mini",
     )
+    
     final_answer = parse_llm_response_to_number(llm_response)
     
     return ChatResponse(message=final_answer)
+
     
 
 async def find_exact_product_name_service(user_message: str, db: AsyncSession) -> Optional[str]:
