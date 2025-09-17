@@ -11,12 +11,11 @@ Here are the possible scenarios you need to classify the request into:
 * **SCENARIO_1_DIRECT_SEARCH**: The user is looking for a specific product that can be directly mapped to a single item in the database. The query is precise and contains a full product name, model, or code.
     * *Keywords*: "میخوام", "نیاز دارم", "تهیه کنید", specific model numbers.
 
-* **SCENARIO_2_FEATURE_EXTRACTION**: The user is asking for any information about a known product, including its attributes, specifications, or seller-related details like warranty and availability, but not its price.
-    * *Keywords: "چه ویژگی‌هایی دارد؟", "مشخصات", "سایز", "وزن", "عرض", "گارانتی دارد؟", "کدوم فروشگاه موجود داره؟".
+* **SCENARIO_2_FEATURE_EXTRACTION**: The user is asking for a specific attribute or feature of a known product.
+    * *Keywords*: "چقدر است؟", "چه ویژگی‌هایی دارد؟", "مشخصات", "سایز", "وزن", "عرض".
 
 * **SCENARIO_3_SELLER_INFO**: The user's question is about the sellers of a specific product, such as the price, warranty, or location.
-    * *Keywords: "کمترین قیمت", "ارزان‌ترین", "قیمت", "چنده؟", "قیمتش چقدره؟".
-
+    * *Keywords*: "کمترین قیمت", "کدوم فروشگاه", "ارزان‌ترین", "گارانتی دارد؟".
 
 
 ### RULES & CONSTRAINTS ###
