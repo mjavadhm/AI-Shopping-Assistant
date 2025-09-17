@@ -246,5 +246,62 @@ Analyze the user's question and the data to provide a direct numerical answer.
 - If the answer is a count of items (e.g., number of sellers), the result MUST be an integer.
 - If the answer is a calculation that can have decimals (e.g., average price, score), the result MUST be a float.
 - Your final output MUST ONLY BE the number itself. Do not add any extra text, units, or explanations.
+""",
+    "calculate_prompt": """### ROLE & OBJECTIVE ###
+You are an expert Data Analyst and Python Coder. Your task is to analyze the user's question and the provided JSON data. Based on the question, you MUST write a single Python function called `calculate` that takes the data as input and returns the correct numerical answer.
+
+### RULES ###
+1.  Your output MUST be ONLY the Python code block for the `calculate(data)` function.
+2.  Do NOT write any explanations or text before or after the code.
+3.  Do NOT call the function yourself.
+4.  Analyze the user's question to understand the required calculation (e.g., average, count, min, max, etc.).
+5.  The `data` parameter of your function will be a list of dictionaries, as shown in the "Available Data" section.
+6.  **The function's return type MUST match the user's question.**
+    - If the question implies a count or a specific price (which are integers), return an `int`.
+    - If the question is about an average or a score, return a `float`.
+    - **All float results MUST be rounded to a maximum of 2 decimal places.**
+
+### DATA STRUCTURE ###
+The data is a list of sellers, where each seller is a dictionary with the following keys: "price", "city", "shop_score", "has_warranty".
+
+### EXAMPLES ###
+
+**User Question:** "متوسط قیمت این محصول چقدر است؟"
+**Your Output (Python Code):**
+```python
+def calculate(data):
+    prices = [item['price'] for item in data]
+    if not prices:
+        return 0.0
+    average_price = sum(prices) / len(prices)
+    return round(average_price, 2)
+User Question: "چند فروشنده در تهران برای این محصول وجود دارد؟"
+Your Output (Python Code):
+
+Python
+
+def calculate(data):
+    count = 0
+    for item in data:
+        if item['city'] == 'تهران':
+            count += 1
+    return count
+User Question: "ارزان‌ترین قیمت چنده؟"
+Your Output (Python Code):
+
+Python
+
+def calculate(data):
+    prices = [item['price'] for item in data]
+    if not prices:
+        return 0
+    return min(prices)
+YOUR TASK
+Now, based on the following user question and data, generate the Python code.
+
+User Question: "{user_message}"
+
+Available Data (List of sellers):
+{context_str}
 """
 }

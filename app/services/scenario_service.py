@@ -142,7 +142,7 @@ async def scenario_two(request: ChatRequest, db: AsyncSession, found_key) -> Cha
     llm_response = await simple_openai_gpt_request(
                 message=message,
                 systemprompt=system_prompt,
-                model="gpt-4.1-nano",
+                model="gpt-4.1",
                         
             )
         
@@ -151,29 +151,22 @@ async def scenario_two(request: ChatRequest, db: AsyncSession, found_key) -> Cha
 
 async def scenario_three(request: ChatRequest, db: AsyncSession, found_key) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
-    
+
     product = await repository.get_product_by_random_key(db, found_key)
 
     if not product or not product.members:
         raise HTTPException(status_code=404, detail=f"No sellers found for product: {found_key}")
+
     member_keys = product.members
-    logger.info(f"-> Member keys to fetch: {member_keys}")
     member_objects = await repository.get_members_by_keys(db, member_keys)
 
     if not member_objects:
         raise HTTPException(status_code=404, detail=f"Seller details could not be found for product: {found_key}")
-    logger.info(f"-> Successfully fetched {len(member_objects)} Member objects.")
-    
-    logger.info("STEP 3: Fetching Shop details...")
-    
+
     shop_ids = [member.shop_id for member in member_objects]
-    logger.info(f"-> Shop IDs to fetch: {list(set(shop_ids))}")
     shops_with_details = await repository.get_shops_with_details_by_ids(db, list(set(shop_ids)))
     shop_details_map = {shop.id: shop for shop in shops_with_details}
-    # logger.info(f"-> Successfully fetched details for {len(shop_details_map)} shops.")
 
-    # logger.info("STEP 4: Combining all data to create the final context...")
-    
     sellers_context = []
     for member in member_objects:
         shop_info = shop_details_map.get(member.shop_id)
@@ -184,29 +177,112 @@ async def scenario_three(request: ChatRequest, db: AsyncSession, found_key) -> C
                 "shop_score": shop_info.score,
                 "has_warranty": shop_info.has_warranty
             })
-    # logger.info(f"-> Final sellers_context being sent to LLM: {json.dumps(sellers_context, ensure_ascii=False, indent=2)}")
+
     if not sellers_context:
          raise HTTPException(status_code=404, detail=f"Could not construct complete seller details for product: {found_key}")
 
     context_str = json.dumps(sellers_context, ensure_ascii=False, indent=2)
-    context_str = f"total shops:{str(len(shop_details_map))}\n\n\n" + context_str
-    final_prompt = SCENARIO_THREE_PROMPTS["final_prompt_template"].format(
+
+    prompt_template = SCENARIO_THREE_PROMPTS["calculate_prompt"]
+
+    code_generation_prompt = prompt_template.format(
         user_message=user_message,
         context_str=context_str
     )
-    system_prompt = SCENARIO_THREE_PROMPTS["system_prompt"]
-    logger.info(f"-> final_prompt: {final_prompt}")
-    logger.info(f"-> system_prompt: {system_prompt}")
-    llm_response = await simple_openai_gpt_request(
+
+    llm_response_code = await simple_openai_gpt_request(
         message='',
-        systemprompt=final_prompt,
-        model="gpt-5-mini",
+        systemprompt=code_generation_prompt,
+        model="gpt-4.1",
     )
-    logger.info(f"-> Raw response from LLM: {llm_response}")
-    final_answer = parse_llm_response_to_number(llm_response)
-    logger.info(f"-> Parsed final answer: {final_answer}")
+
+    if "```python" in llm_response_code:
+        llm_response_code = llm_response_code.split("```python")[1].split("```")[0].strip()
+
+    logger.info(f"-> Generated Python code from LLM:\n{llm_response_code}")
+
+    final_answer = ""
+    try:
+
+        local_scope = {}
+        exec(llm_response_code, globals(), local_scope)
+
+        calculator_func = local_scope.get('calculate')
+
+        if callable(calculator_func):
     
+            result = calculator_func(sellers_context)
+            final_answer = str(result)
+            logger.info(f"-> Calculated result from dynamic code: {final_answer}")
+        else:
+            logger.error("-> 'calculate' function not found or not callable in LLM response.")
+            final_answer = llm_response_code
+            raise HTTPException(status_code=500, detail="Internal error in processing the request.(calculate function error)")
+
+    except Exception as e:
+        logger.error(f"-> Error executing generated code: {e}", exc_info=True)
+
     return ChatResponse(message=final_answer)
+
+
+# async def scenario_three(request: ChatRequest, db: AsyncSession, found_key) -> ChatResponse:
+#     user_message = request.messages[-1].content.strip()
+    
+#     product = await repository.get_product_by_random_key(db, found_key)
+
+#     if not product or not product.members:
+#         raise HTTPException(status_code=404, detail=f"No sellers found for product: {found_key}")
+#     member_keys = product.members
+#     logger.info(f"-> Member keys to fetch: {member_keys}")
+#     member_objects = await repository.get_members_by_keys(db, member_keys)
+
+#     if not member_objects:
+#         raise HTTPException(status_code=404, detail=f"Seller details could not be found for product: {found_key}")
+#     logger.info(f"-> Successfully fetched {len(member_objects)} Member objects.")
+    
+#     logger.info("STEP 3: Fetching Shop details...")
+    
+#     shop_ids = [member.shop_id for member in member_objects]
+#     logger.info(f"-> Shop IDs to fetch: {list(set(shop_ids))}")
+#     shops_with_details = await repository.get_shops_with_details_by_ids(db, list(set(shop_ids)))
+#     shop_details_map = {shop.id: shop for shop in shops_with_details}
+#     # logger.info(f"-> Successfully fetched details for {len(shop_details_map)} shops.")
+
+#     # logger.info("STEP 4: Combining all data to create the final context...")
+    
+#     sellers_context = []
+#     for member in member_objects:
+#         shop_info = shop_details_map.get(member.shop_id)
+#         if shop_info and shop_info.city:
+#             sellers_context.append({
+#                 "price": member.price,
+#                 "city": shop_info.city.name,
+#                 "shop_score": shop_info.score,
+#                 "has_warranty": shop_info.has_warranty
+#             })
+#     # logger.info(f"-> Final sellers_context being sent to LLM: {json.dumps(sellers_context, ensure_ascii=False, indent=2)}")
+#     if not sellers_context:
+#          raise HTTPException(status_code=404, detail=f"Could not construct complete seller details for product: {found_key}")
+
+#     context_str = json.dumps(sellers_context, ensure_ascii=False, indent=2)
+#     context_str = f"total shops:{str(len(shop_details_map))}\n\n\n" + context_str
+#     final_prompt = SCENARIO_THREE_PROMPTS["final_prompt_template"].format(
+#         user_message=user_message,
+#         context_str=context_str
+#     )
+#     system_prompt = SCENARIO_THREE_PROMPTS["system_prompt"]
+#     logger.info(f"-> final_prompt: {final_prompt}")
+#     logger.info(f"-> system_prompt: {system_prompt}")
+#     llm_response = await simple_openai_gpt_request(
+#         message='',
+#         systemprompt=final_prompt,
+#         model="gpt-5-mini",
+#     )
+#     logger.info(f"-> Raw response from LLM: {llm_response}")
+#     final_answer = parse_llm_response_to_number(llm_response)
+#     logger.info(f"-> Parsed final answer: {final_answer}")
+    
+#     return ChatResponse(message=final_answer)
     
 
 async def find_exact_product_name_service(user_message: str, db: AsyncSession, essential_keywords: List[str], descriptive_keywords: List[str]) -> Optional[str]:
