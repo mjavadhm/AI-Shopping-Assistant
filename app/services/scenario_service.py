@@ -72,7 +72,7 @@ async def classify_scenario(request: ChatRequest) -> Tuple[str, List[str], List[
         _, tool_calls = await simple_openai_gpt_request_with_tools(
             message=last_message,
             systemprompt=system_prompt,
-            model="gpt-5-mini",
+            model="gpt-5-nano",
             tools=FIRST_AGENT_TOOLS
         )
 
@@ -116,7 +116,7 @@ async def classify_scenario(request: ChatRequest) -> Tuple[str, List[str], List[
 #         llm_response = await simple_openai_gpt_request(
 #             message=last_message,
 #             systemprompt=system_prompt,
-#             model="gpt-5-mini",
+#             model="gpt-5-nano",
                     
 #         )
 
@@ -142,7 +142,7 @@ async def scenario_two(request: ChatRequest, db: AsyncSession, found_key) -> Cha
     llm_response = await simple_openai_gpt_request(
                 message=message,
                 systemprompt=system_prompt,
-                model="gpt-5-mini",
+                model="gpt-5-nano",
                         
             )
         
@@ -223,7 +223,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
     llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
         message="",
         systemprompt=system_prompt,
-        model="gpt-5-mini",
+        model="gpt-5-nano",
         tools=FIRST_SCENARIO_TOOLS
     )
     tools_answer = []
@@ -234,7 +234,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
             llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
                 message=user_message,
                 systemprompt=system_prompt,
-                model="gpt-5-mini",
+                model="gpt-5-nano",
                 tools=FIRST_SCENARIO_TOOLS,
                 tools_answer=tools_answer
             )
@@ -255,7 +255,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
 #     llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
 #         message=user_message,
 #         systemprompt=system_prompt,
-#         model="gpt-5-mini",
+#         model="gpt-5-nano",
 #         tools=FIRST_SCENARIO_TOOLS
 #     )
 #     tools_answer = []
@@ -266,7 +266,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
 #             llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
 #                 message=user_message,
 #                 systemprompt=system_prompt,
-#                 model="gpt-5-mini",
+#                 model="gpt-5-nano",
 #                 tools=FIRST_SCENARIO_TOOLS,
 #                 tools_answer=tools_answer
 #             )

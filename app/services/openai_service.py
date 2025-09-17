@@ -164,6 +164,9 @@ def calculate_gpt_cost(input_tokens, output_tokens, model = 'gpt-4o-mini'):
         if model == 'gpt-5-mini':
             input_token_cost_per_million = 0.25
             output_token_cost_per_million = 2.00
+        if model == 'gpt-5-nano':
+            input_token_cost_per_million = 0.05
+            output_token_cost_per_million = 0.40
             
         
         input_cost = (input_tokens / 1_000_000) * input_token_cost_per_million
