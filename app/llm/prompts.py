@@ -82,35 +82,30 @@ Now, analyze the user's message and execute both tool calls without exception.
 
 SELECT_BEST_MATCH_PROMPT = {
     "main_prompt_template": """### ROLE & OBJECTIVE ###
-You are a highly intelligent and autonomous e-commerce product search agent. Your single objective is to find the one, perfect product that matches the user's request. You will operate in a loop, analyzing results and refining your search until you succeed. Your output must ALWAYS be either a tool call or the final, exact product name. DO NOT generate conversational messages.
+You are an expert AI product matching engine. Your sole objective is to analyze the user's original query and select the single most accurate product name from the provided list of search results. Your output must be precise and machine-readable.
 
-### INITIAL INPUTS ###
+### CONTEXT & INPUTS ###
 
 **1. Original User Query:**
 "{user_query}"
 
-**2. Initial Search Keywords:**
-- Essential: {initial_essential_keywords}
-- Descriptive: {initial_descriptive_keywords}
+**2. Search Results (List of potential products):**
+{search_results_str}
 
-### AUTOMATION LOOP ###
+### INSTRUCTIONS & RULES ###
+1.  **Analyze Carefully**: Read the "Original User Query" and pay close attention to all details such as product type, model, code, color, and other features mentioned.
+2.  **Compare**: Compare the user's query against each product in the "Search Results" list.
+3.  **Select the Best Match**: Identify the one product from the list that is the most complete and accurate match.
+4.  **Output Format**: Your final output MUST BE ONLY the full, exact product name of the best match you selected.
+    -   DO NOT add any introductory text like "The best match is...".
+    -   DO NOT add explanations or comments.
+5.  **No Match Condition**: If you determine that NONE of the products in the list are a good match for the user's query, you MUST return the exact string `NO_MATCH_FOUND`.
 
-**Thought:**
-Analyze the current situation. What was the result of the last action? Is there a perfect match? Are the results too broad or too narrow? Based on this, decide your next action.
-
-**Action:**
-You have two possible actions:
-1.  **`search_products_by_keywords(essential_keywords, descriptive_keywords)`**: Call this tool if the current results are not satisfactory and you need to refine your search.
-2.  **Final Answer**: If you have found a single, perfect match, provide its full name as the final answer.
-
-**Observation:**
-This will be the JSON output from the `search_products_by_keywords` tool. It has a `status` ("success", "not_found", "too_many_results") and `results`.
-
----
-*You will now begin the process. The first observation is from the initial search.*
----
+### YOUR TASK ###
+Now, based on the provided inputs, return the single best match or `NO_MATCH_FOUND`.
 """
 }
+
 
 # * **SCENARIO_4_CONVERSATIONAL_SEARCH**: The user is looking for a product but the query is general and requires follow-up questions to narrow down the results. The assistant needs to interact with the user to understand their needs better.
 #     * *Keywords*: "دنبال ... هستم", "کمکم کنید", "پیشنهاد میدی؟", general product categories like "بخاری برقی".
