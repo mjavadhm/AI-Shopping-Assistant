@@ -1,12 +1,16 @@
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
+import json
+
 
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.openai_service import simple_openai_gpt_request, simple_openai_gpt_request_with_tools
-from app.llm.prompts import FIND_PRODUCT_PROMPTS, ROUTER_PROMPT,SCENARIO_TWO_PROMPTS
+from app.llm.prompts import FIND_PRODUCT_PROMPTS, ROUTER_PROMPT,SCENARIO_TWO_PROMPTS, SCENARIO_THREE_PROMPTS
 from app.db.session import get_db
 from app.llm.tools.definitions import FIRST_SCENARIO_TOOLS
 from app.llm.tools.handler import ToolHandler
+from app.core.utils import parse_llm_response_to_number
 from app.db import repository
 from app.core.logger import logger
 
@@ -96,7 +100,56 @@ async def scenario_two(request: ChatRequest, db: AsyncSession) -> ChatResponse:
         
         logger.info(f"llm response:{llm_response}")
         return ChatResponse(message=llm_response)
-        
+
+async def scenario_three(request: ChatRequest, db: AsyncSession) -> ChatResponse:
+    user_message = request.messages[-1].content.strip()
+    
+    found_keys = await find_exact_product_name_service(user_message, db)
+    if not found_keys:
+        raise HTTPException(status_code=404, detail="Product not found.")
+
+    first_key = found_keys[0]
+    product = await repository.get_product_by_random_key(db, first_key)
+
+    if not product or not product.members:
+        raise HTTPException(status_code=404, detail=f"No sellers found for product: {first_key}")
+
+    shop_ids = [member['shop_id'] for member in product.members if 'shop_id' in member]
+    
+    shops_with_details = await repository.get_shops_with_details_by_ids(db, list(set(shop_ids)))
+    
+    shop_details_map = {shop.id: shop for shop in shops_with_details}
+
+    sellers_context = []
+    for member_data in product.members:
+        shop_id = member_data.get('shop_id')
+        shop_info = shop_details_map.get(shop_id)
+
+        if shop_info and shop_info.city:
+            sellers_context.append({
+                "price": member_data.get('price'),
+                "city": shop_info.city.name,
+                "shop_score": shop_info.score,
+                "has_warranty": shop_info.has_warranty
+            })
+
+    if not sellers_context:
+         raise HTTPException(status_code=404, detail=f"Could not retrieve complete seller details for product: {first_key}")
+
+    context_str = json.dumps(sellers_context, ensure_ascii=False, indent=2)
+    final_prompt = SCENARIO_THREE_PROMPTS["final_prompt_template"].format(
+        user_message=user_message,
+        context_str=context_str
+    )
+    system_prompt = SCENARIO_THREE_PROMPTS["system_prompt"]
+    llm_response = await simple_openai_gpt_request(
+        message=final_prompt,
+        systemprompt=system_prompt,
+        model="gpt-4.1-mini",
+    )
+    final_answer = parse_llm_response_to_number(llm_response)
+    
+    return ChatResponse(message=final_answer)
     
 
 async def find_exact_product_name_service(user_message: str, db: AsyncSession) -> Optional[str]:

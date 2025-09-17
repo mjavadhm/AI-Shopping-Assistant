@@ -3,6 +3,7 @@ from sqlalchemy.future import select
 from typing import List, Optional
 from . import models
 from sqlalchemy import and_
+from sqlalchemy.orm import joinedload
 
 async def search_product_by_name(db: AsyncSession, product_name: str) -> Optional[List[str]]:
     """
@@ -72,3 +73,43 @@ async def get_product_by_random_key(db: AsyncSession, random_key: str) -> Option
     product = result.scalar_one_or_none()
     
     return product
+
+
+# async def get_product_with_seller_details(db: AsyncSession, base_random_key: str):
+#     """
+#     Fetches a product and all its related seller details (members, shops, cities)
+#     in a single, optimized query to avoid the N+1 problem.
+#     """
+#     query = (
+#         select(models.BaseProduct)
+#         .where(models.BaseProduct.base_random_key == base_random_key)
+#         .options(
+#             joinedload(models.BaseProduct.members)
+#             .joinedload(models.Member.shop)
+#             .joinedload(models.Shop.city)
+#         )
+#     )
+    
+#     result = await db.execute(query)
+#     # unique() is important to get distinct product results
+#     product = result.unique().scalar_one_or_none()
+    
+#     return product
+
+async def get_shops_with_details_by_ids(db: AsyncSession, shop_ids: list[int]):
+    """
+    Fetches a list of shops and their related cities using a single optimized query.
+    """
+    if not shop_ids:
+        return []
+        
+    query = (
+        select(models.Shop)
+        .where(models.Shop.id.in_(shop_ids)) # Use WHERE IN clause for efficiency
+        .options(
+            joinedload(models.Shop.city) # Efficiently join with cities table
+        )
+    )
+    result = await db.execute(query)
+    # .scalars().all() returns a list of Shop objects
+    return result.scalars().all()
