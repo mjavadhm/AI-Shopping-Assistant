@@ -124,7 +124,8 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession) -
             break
     
     logger.info(f"llm_response: {llm_response}")
-    p_name = llm_response.strip()
+    p_name = llm_response.split('\n')[0]
+    p_name = p_name.strip()
     logger.info(f"cleaned name:{p_name}")
     found_keys = await repository.search_product_by_name(db=db, product_name=p_name)
     logger.info(f"found_keys: {found_keys}")
