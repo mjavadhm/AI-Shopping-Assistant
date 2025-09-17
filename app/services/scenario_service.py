@@ -114,48 +114,31 @@ async def scenario_three(request: ChatRequest, db: AsyncSession) -> ChatResponse
 
     if not product or not product.members:
         raise HTTPException(status_code=404, detail=f"No sellers found for product: {first_key}")
-    members_list = product.members
-    
-    logger.info(f"Type of product.members: {type(members_list)}")
-    logger.info(f"Content of product.members: {members_list}")
+    member_keys = product.members
+    member_objects = await repository.get_members_by_keys(db, member_keys)
 
-    if not isinstance(members_list, list):
-        raise HTTPException(status_code=500, detail="Members data is not a list as expected.")
-    
-    if not members_list:
-        raise HTTPException(status_code=404, detail=f"Seller list is empty for product: {first_key}")
-    try:
-        members_list = json.loads(product.members)
-        if not isinstance(members_list, list):
-             raise HTTPException(status_code=500, detail="Members data is not a list.")
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Failed to decode members JSON.")
+    if not member_objects:
+        raise HTTPException(status_code=404, detail=f"Seller details could not be found for product: {first_key}")
 
-    if not members_list:
-        raise HTTPException(status_code=404, detail=f"Seller list is empty for product: {first_key}")
-
-    shop_ids = [member.get('shop_id') for member in members_list if member.get('shop_id') is not None]
-    
+    shop_ids = [member.shop_id for member in member_objects]
     shops_with_details = await repository.get_shops_with_details_by_ids(db, list(set(shop_ids)))
-    
     shop_details_map = {shop.id: shop for shop in shops_with_details}
 
     sellers_context = []
-    for member_data in members_list:
-        shop_id = member_data.get('shop_id')
-        shop_info = shop_details_map.get(shop_id)
-
+    for member in member_objects:
+        shop_info = shop_details_map.get(member.shop_id)
         if shop_info and shop_info.city:
             sellers_context.append({
-                "price": member_data.get('price'),
+                "price": member.price,
                 "city": shop_info.city.name,
                 "shop_score": shop_info.score,
                 "has_warranty": shop_info.has_warranty
             })
 
     if not sellers_context:
-         raise HTTPException(status_code=404, detail=f"Could not retrieve complete seller details for product: {first_key}")
+         raise HTTPException(status_code=404, detail=f"Could not construct complete seller details for product: {first_key}")
 
+    # --- Step 5 & 6: Call LLM and process the response ---
     context_str = json.dumps(sellers_context, ensure_ascii=False, indent=2)
 
     final_prompt = SCENARIO_THREE_PROMPTS["final_prompt_template"].format(
@@ -173,7 +156,6 @@ async def scenario_three(request: ChatRequest, db: AsyncSession) -> ChatResponse
     final_answer = parse_llm_response_to_number(llm_response)
     
     return ChatResponse(message=final_answer)
-
     
 
 async def find_exact_product_name_service(user_message: str, db: AsyncSession) -> Optional[str]:

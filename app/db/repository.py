@@ -96,6 +96,18 @@ async def get_product_by_random_key(db: AsyncSession, random_key: str) -> Option
     
 #     return product
 
+async def get_members_by_keys(db: AsyncSession, member_keys: list[str]):
+    """
+    Fetches a list of Member objects based on a list of their random_keys.
+    """
+    if not member_keys:
+        return []
+    
+    query = select(models.Member).where(models.Member.random_key.in_(member_keys))
+    result = await db.execute(query)
+    return result.scalars().all()
+
+# This function is also still needed
 async def get_shops_with_details_by_ids(db: AsyncSession, shop_ids: list[int]):
     """
     Fetches a list of shops and their related cities using a single optimized query.
@@ -105,11 +117,8 @@ async def get_shops_with_details_by_ids(db: AsyncSession, shop_ids: list[int]):
         
     query = (
         select(models.Shop)
-        .where(models.Shop.id.in_(shop_ids)) # Use WHERE IN clause for efficiency
-        .options(
-            joinedload(models.Shop.city) # Efficiently join with cities table
-        )
+        .where(models.Shop.id.in_(shop_ids))
+        .options(joinedload(models.Shop.city))
     )
     result = await db.execute(query)
-    # .scalars().all() returns a list of Shop objects
     return result.scalars().all()
