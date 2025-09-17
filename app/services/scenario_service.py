@@ -67,7 +67,7 @@ async def classify_scenario(request: ChatRequest) -> str:
         llm_response = await simple_openai_gpt_request(
             message=last_message,
             systemprompt=system_prompt,
-            model="gpt-4.1-mini",
+            model="gpt-5-mini",
                     
         )
 
@@ -95,7 +95,7 @@ async def scenario_two(request: ChatRequest, db: AsyncSession) -> ChatResponse:
         llm_response = await simple_openai_gpt_request(
                 message=message,
                 systemprompt=system_prompt,
-                model="gpt-4.1-mini",
+                model="gpt-5-mini",
                         
             )
         
@@ -173,7 +173,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession) -
     llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
         message=user_message,
         systemprompt=system_prompt,
-        model="gpt-4.1-mini",
+        model="gpt-5-mini",
         tools=FIRST_SCENARIO_TOOLS
     )
     tools_answer = []
@@ -184,7 +184,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession) -
             llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
                 message=user_message,
                 systemprompt=system_prompt,
-                model="gpt-4.1-mini",
+                model="gpt-5-mini",
                 tools=FIRST_SCENARIO_TOOLS,
                 tools_answer=tools_answer
             )
