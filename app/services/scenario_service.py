@@ -72,7 +72,7 @@ async def classify_scenario(request: ChatRequest) -> Tuple[str, List[str], List[
         _, tool_calls = await simple_openai_gpt_request_with_tools(
             message=last_message,
             systemprompt=system_prompt,
-            model="gpt-4.1-nano",
+            model="gpt-4.1-mini",
             tools=FIRST_AGENT_TOOLS
         )
 
