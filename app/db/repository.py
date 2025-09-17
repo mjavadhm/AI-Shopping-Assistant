@@ -51,3 +51,24 @@ async def search_products_by_keywords(db: AsyncSession, keywords: List[str]) -> 
     product_names = result.scalars().all()
     
     return product_names if product_names else None
+
+async def get_product_features_by_name(db: AsyncSession, product_name: str) -> Optional[dict]:
+    
+    query = select(models.BaseProduct.extra_features).where(
+        models.BaseProduct.persian_name == product_name
+    )
+    result = await db.execute(query)
+    features = result.scalar_one_or_none()
+    return features if features else None
+
+async def get_product_by_random_key(db: AsyncSession, random_key: str) -> Optional[models.BaseProduct]:
+    
+    query = select(models.BaseProduct).where(
+        models.BaseProduct.random_key == random_key
+    )
+    
+    result = await db.execute(query)
+    
+    product = result.scalar_one_or_none()
+    
+    return product

@@ -76,7 +76,7 @@ Now, process the latest user message and classify it into one of the scenarios.
 
 
 # SCENARIO_ONE_PROMPTS
-SCENARIO_ONE_PROMPTS = {
+FIND_PRODUCT_PROMPTS = {
     "main_prompt": """You are an expert product search automation engine. Your only goal is to find the single, most accurate product name from a user's query. You must operate autonomously, refining your search until you find a perfect match. Your output must ALWAYS be a tool call or the final, exact product name. DO NOT generate conversational messages.
 
 ### AUTOMATION PROCESS ###
@@ -106,5 +106,23 @@ SCENARIO_ONE_PROMPTS = {
         4.  **If NO**: You have used all available details, but the results are still too broad. It is impossible to choose one. Your final output must be the string: `AUTOMATION_FAILURE_TOO_MANY_RESULTS`.
 
 4.  **Failure Condition**: If you have removed all `extra_keywords` and the search still results in "not_found", it means the core product does not exist. Your final output must be the string: `AUTOMATION_FAILURE_NOT_FOUND`.
+"""
+}
+
+SCENARIO_TWO_PROMPTS = {
+    "main_prompt_step_2": """You are an expert AI assistant. You have received the result of a tool call that extracted a product feature. Your task is to formulate a final, concise response for the user.
+
+### CONTEXT ###
+The user has asked for a specific feature of a product. You now have the result from the tool's JSON output.
+
+### RULES ###
+1.  Look at the `status` field in the JSON.
+2.  **If `status` is "success"**:
+    -   Extract the `feature_value`.
+    -   Your final answer should be only the value itself or a very short sentence containing it.
+    -   Examples: "1.18 meter", "The width is 1.18 meters.", "118 cm".
+3.  **If `status` is "product_not_found" or "feature_not_found"**:
+    -   Generate a polite and helpful message in Persian explaining the problem.
+4.  **Final Output**: Your output must only be the final message for the user.
 """
 }

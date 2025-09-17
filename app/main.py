@@ -6,7 +6,6 @@ import json
 from .schemas.chat import ChatRequest, ChatResponse
 from .core.logger import logger
 from app.core.json_logger import log_request_response
-from .llm.prompts import SCENARIO_ONE_PROMPTS
 from .services.scenario_service import check_scenario_one
 from .db.session import get_db 
 app = FastAPI()

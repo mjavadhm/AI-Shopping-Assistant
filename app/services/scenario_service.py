@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from typing import List, Optional
 
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.openai_service import simple_openai_gpt_request, simple_openai_gpt_request_with_tools
-from app.llm.prompts import SCENARIO_ONE_PROMPTS, ROUTER_PROMPT
+from app.llm.prompts import FIND_PRODUCT_PROMPTS, ROUTER_PROMPT,SCENARIO_TWO_PROMPTS
 from app.db.session import get_db
 from app.llm.tools.definitions import FIRST_SCENARIO_TOOLS
 from app.llm.tools.handler import ToolHandler
@@ -41,7 +41,9 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
             logger.info(f"CLASSIFIED SCENARIO: {scenario}")
             if scenario == "SCENARIO_1_DIRECT_SEARCH":
                 response = await scenario_one(request, db=db)
-            
+            elif scenario == "SCENARIO_2_FEATURE_EXTRACTION":
+                response = await scenario_two(request, db=db)
+                
         return response
     except Exception as e:
         logger.error(e,exc_info=True)
@@ -71,8 +73,34 @@ async def classify_scenario(request: ChatRequest) -> str:
 
 
 async def scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
-    system_prompt = SCENARIO_ONE_PROMPTS.get("main_prompt", "")
     user_message = request.messages[-1].content.strip()
+    found_keys = await find_exact_product_name_service(user_message, db)
+    return ChatResponse(base_random_keys=found_keys)
+
+async def scenario_two(request: ChatRequest, db: AsyncSession) -> ChatResponse:
+    user_message = request.messages[-1].content.strip()
+    found_keys = await find_exact_product_name_service(user_message, db)
+    if found_keys:
+        first_key = found_keys[0]
+        product = await repository.get_product_by_random_key(db, first_key)
+    
+        message = f"user input:{user_message}\n\nproduct_feautures:{str(product.extra_features)}"
+        system_prompt = SCENARIO_TWO_PROMPTS.get("main_prompt_step_2", "")
+
+        llm_response = await simple_openai_gpt_request(
+                message=message,
+                systemprompt=system_prompt,
+                model="gpt-4.1-mini",
+                        
+            )
+        
+        logger.info(f"llm response:{llm_response}")
+        return ChatResponse(message=llm_response)
+        
+    
+
+async def find_exact_product_name_service(user_message: str, db: AsyncSession) -> Optional[str]:
+    system_prompt = FIND_PRODUCT_PROMPTS.get("main_prompt", "")
     tool_handler = ToolHandler(db=db)
     llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
         message=user_message,
@@ -81,7 +109,7 @@ async def scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
         tools=FIRST_SCENARIO_TOOLS
     )
     tools_answer = []
-    for _ in range(5): # A for loop is safer than a while True loop here.
+    for _ in range(5):
         if tool_calls:
             tools_answer = await tool_handler.handle_tool_call(tool_calls, tools_answer)
             
@@ -94,7 +122,8 @@ async def scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
             )
         else:
             break
+    
     logger.info(f"llm_response: {llm_response}")
     found_keys = await repository.search_product_by_name(db=db, product_name=llm_response)
     logger.info(f"found_keys: {found_keys}")
-    return ChatResponse(base_random_keys=found_keys)
+    return found_keys
