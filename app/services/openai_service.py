@@ -52,7 +52,10 @@ async def simple_openai_gpt_request(
             model=model,
             messages=messages,
         )
-
+        input_tokens = response.usage.prompt_tokens
+        output_tokens = response.usage.completion_tokens
+        cost = calculate_gpt_cost(input_tokens, output_tokens, model = model)
+        logger.info(f"--------------------------\nmodel: {model}\ncost:{cost}\n--------------------------")
         # input_tokens = response.usage.prompt_tokens
         # output_tokens = response.usage.completion_tokens
 
@@ -116,8 +119,10 @@ async def simple_openai_gpt_request_with_tools(
         result = response.choices[0].message.content
         
         tool_calls = response.choices[0].message.tool_calls
-        
-        
+        input_tokens = response.usage.prompt_tokens
+        output_tokens = response.usage.completion_tokens
+        cost = calculate_gpt_cost(input_tokens, output_tokens, model = model)
+        logger.info(f"--------------------------\nmodel: {model}\ncost:{cost}\n--------------------------")
         return result, tool_calls
         
     except Exception as e:
@@ -131,3 +136,33 @@ def get_embeddings(texts, model="text-embedding-3-small", dimensions=512):
         dimensions=dimensions
     )
     return [embedding.embedding for embedding in response.data]
+
+
+def calculate_gpt_cost(input_tokens, output_tokens, model = 'gpt-4o-mini'):
+    try:
+        if model == 'gpt-4o':
+            input_token_cost_per_million = 2.5
+            output_token_cost_per_million = 10
+        if model == 'gpt-4o-mini':
+            input_token_cost_per_million = 0.150
+            output_token_cost_per_million = 0.600
+        if model == 'gpt-4.1-mini':
+            input_token_cost_per_million = 0.40
+            output_token_cost_per_million = 1.60
+        if model == 'gpt-4.1-nano':
+            input_token_cost_per_million = 0.1
+            output_token_cost_per_million = 0.4
+        if model == 'gpt-4.1':
+            input_token_cost_per_million = 2.00
+            output_token_cost_per_million = 8.00
+        
+        input_cost = (input_tokens / 1_000_000) * input_token_cost_per_million
+        
+        output_cost = (output_tokens / 1_000_000) * output_token_cost_per_million
+        
+        total_cost = input_cost + output_cost
+        
+        return input_tokens, output_tokens, total_cost
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+        raise
