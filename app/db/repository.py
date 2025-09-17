@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Optional
 from . import models
+from sqlalchemy import and_
 
 async def search_product_by_name(db: AsyncSession, product_name: str) -> Optional[List[str]]:
     """
@@ -31,3 +32,22 @@ async def search_product_by_name(db: AsyncSession, product_name: str) -> Optiona
         return keys
         
     return None
+
+async def search_products_by_keywords(db: AsyncSession, keywords: List[str]) -> Optional[List[str]]:
+    """
+    Asynchronously searches for products by a list of keywords in their Persian name.
+    It returns a list of product names that contain ALL of the specified keywords.
+    """
+    if not keywords:
+        return None
+
+    # We create a list of `ilike` conditions to perform a case-insensitive "contains" search.
+    # The `and_` ensures that the product name must contain ALL keywords.
+    conditions = and_(*[models.BaseProduct.persian_name.ilike(f"%{keyword}%") for keyword in keywords])
+    
+    query = select(models.BaseProduct.persian_name).where(conditions)
+    
+    result = await db.execute(query)
+    product_names = result.scalars().all()
+    
+    return product_names if product_names else None
