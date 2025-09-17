@@ -148,7 +148,7 @@ async def scenario_three(request: ChatRequest, db: AsyncSession) -> ChatResponse
 
     # --- Step 5 & 6: Call LLM and process the response ---
     context_str = json.dumps(sellers_context, ensure_ascii=False, indent=2)
-
+    context_str = f"total shops:{str(len(shop_details_map))}\n\n\n" + context_str
     final_prompt = SCENARIO_THREE_PROMPTS["final_prompt_template"].format(
         user_message=user_message,
         context_str=context_str
