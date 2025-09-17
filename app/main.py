@@ -8,14 +8,14 @@ from .core.logger import logger
 from app.core.json_logger import log_request_response
 from .services.scenario_service import check_scenario_one
 from .db.session import get_db 
-from .services.openai_service import total_cost_per_session, current_request_cost
+from .core import cost_manager
 
 app = FastAPI()
 
 @app.middleware("http")
 async def json_logging_middleware(request: Request, call_next):
     global current_request_cost
-    current_request_cost = 0.0
+    token = cost_manager.current_request_cost_var.set(0.0)
     request_body_json = None
     try:
         request_body_bytes = await request.body()
@@ -30,7 +30,8 @@ async def json_logging_middleware(request: Request, call_next):
         request_body_json = {"error": "Could not parse request body as JSON"}
 
     response = await call_next(request)
-
+    request_cost = cost_manager.current_request_cost_var.get()
+    cost_manager.total_cost_per_session += request_cost
     response_body_json = None
     response_body_bytes = b""
     async for chunk in response.body_iterator:
@@ -45,9 +46,9 @@ async def json_logging_middleware(request: Request, call_next):
     log_data = {
         "request": request_body_json,
         "response": response_body_json,
-        "openai_cost": current_request_cost
+        "openai_cost": request_cost 
     }
-
+    cost_manager.current_request_cost_var.reset(token)
     task = BackgroundTask(log_request_response, log_data=log_data)
 
     return Response(
