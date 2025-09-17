@@ -47,7 +47,8 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
                 response = await scenario_one(request, db=db)
             elif scenario == "SCENARIO_2_FEATURE_EXTRACTION":
                 response = await scenario_two(request, db=db)
-                
+            elif scenario == "SCENARIO_3_SELLER_INFO":
+                response = await scenario_three(request, db=db)
         return response
     except Exception as e:
         logger.error(e,exc_info=True)
