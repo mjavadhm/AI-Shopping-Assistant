@@ -48,7 +48,7 @@ class ToolHandler:
             # Call the function with its arguments and the db session
             # **function_args unpacks the dictionary into keyword arguments (e.g., keywords=...)
             tool_output = await function_to_call(db=self.db, **function_args)
-            tools_answer.append({"role": "assistant", "function_call": {"name": function_name, "arguments": function_arguments}})
-            tools_answer.append({"role": "function", "name": function_name, "content": tool_output})
+            tools_answer.append({"role": "assistant", "tool_calls": [{"id": tool_call.id, "type": "function", "function": {"name": function_name, "arguments": function_arguments}}]})
+            tools_answer.append({"role": "tool", "tool_call_id": tool_call.id, "content": tool_output})
         return tools_answer
         
