@@ -2,20 +2,26 @@ search_products_tool = {
     "type": "function",
     "function": {
         "name": "search_products_by_keywords",
-        "description": "Searches the product database based on a list of keywords from the user's query. Use this to find the product the user is asking for.",
+        "description": "Searches the product database based on essential and descriptive keywords from the user's query.",
         "parameters": {
             "type": "object",
             "properties": {
-                "keywords": {
+                "essential_keywords": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "A list of essential keywords from the user's request. e.g., ['فلاور بگ', 'رز سفید']"
+                    "description": "A list of core keywords that DEFINE the product. e.g., ['فلاور بگ', 'گوشی', 'سامسونگ']."
+                },
+                "descriptive_keywords": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "A list of optional, descriptive keywords that DESCRIBE the product's features. e.g., ['رز سفید', 'آفتابگردان', 'مشکی', '256 گیگ']."
                 }
             },
-            "required": ["keywords"],
+            "required": ["essential_keywords"],
         },
     },
 }
+
 
 get_feature_tool = {
     "type": "function",

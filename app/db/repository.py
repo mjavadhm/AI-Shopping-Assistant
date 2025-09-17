@@ -34,29 +34,36 @@ async def search_product_by_name(db: AsyncSession, product_name: str) -> Optiona
         return keys
         
     return None
-async def search_products_by_keywords(db: AsyncSession, keywords: List[str]) -> Optional[List[str]]:
+async def search_products_by_keywords(
+    db: AsyncSession, 
+    essential_keywords: List[str], 
+    descriptive_keywords: Optional[List[str]] = None
+) -> Optional[List[str]]:
     """
-    Asynchronously searches for products using Full-Text Search.
-    It returns a list of product names that contain ALL of the specified keywords.
+    Performs a hybrid search using essential (AND) and descriptive (OR) keywords.
     """
-    if not keywords:
+    if not essential_keywords:
         return None
 
-    # --- START OF FIX ---
-    # Process keywords to handle multi-word phrases correctly.
-    processed_keywords = []
-    for keyword in keywords:
-        # Split phrases like "فلاور بگ" into individual words ["فلاور", "بگ"]
-        processed_keywords.extend(keyword.split())
+    # Helper function to process keywords
+    def process_and_join(keywords: List[str], operator: str) -> str:
+        processed = []
+        for keyword in keywords:
+            processed.extend(keyword.split())
+        return f" {operator} ".join(processed)
 
-    # Join all individual words with the '&' operator for the tsquery.
-    # Example: ['فلاور', 'بگ', 'قرمز'] becomes 'فلاور & بگ & قرمز'
-    search_query = " & ".join(processed_keywords)
-    # --- END OF FIX ---
+    # Build the essential part of the query (using AND)
+    essential_query_part = process_and_join(essential_keywords, '&')
+    final_query_str = f"({essential_query_part})"
 
-    # Use the '@@' operator for full-text search against the TSVECTOR column.
+    # If there are descriptive keywords, build that part (using OR) and append it
+    if descriptive_keywords:
+        descriptive_query_part = process_and_join(descriptive_keywords, '|')
+        final_query_str += f" & ({descriptive_query_part})"
+
+    # Execute the final hybrid query
     query = select(models.BaseProduct.persian_name).where(
-        models.BaseProduct.persian_name_tsv.op('@@')(to_tsquery('simple', search_query))
+        models.BaseProduct.persian_name_tsv.op('@@')(to_tsquery('simple', final_query_str))
     )
     
     result = await db.execute(query)
