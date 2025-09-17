@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 log_lock = asyncio.Lock()
-LOG_FILE = Path("request_logs.json")
+LOG_FILE = Path("logs/request_logs.json")
 
 async def log_request_response(log_data: dict):
     
