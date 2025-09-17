@@ -35,3 +35,19 @@ Your single objective is to identify and extract the **exact and complete produc
 Now, process the message
 """,
 }
+
+
+# {
+#     {
+#         "id": 1,
+#         "request": [{ "chat_id": "sanity-check-ping", "messages": [ { "type": "text", "content": "ping" } ] }],
+#         "response": [{ "message": "pong", "base_random_keys": None, "member_random_keys": None }]
+    
+#     },
+#     {
+#         "id": 2,
+#         "request": [{ "chat_id": "sanity-check-base-key", "messages": [ { "type": "text", "content": "return base random key: 123e4567-e89b-12d3-a456-426614174000" } ] }]
+#         "response": [{ "message": null, "base_random_keys": ["123e4567-e89b-12d3-a456-426614174000"], "member_random_keys": None }]
+    
+#     },
+# }

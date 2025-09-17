@@ -1,13 +1,58 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from starlette.background import BackgroundTask
+import json
 
 from .schemas.chat import ChatRequest, ChatResponse
 from .core.logger import logger
+from app.core.json_logger import log_request_response
 from .llm.prompts import SCENARIO_ONE_PROMPTS
 from .services.scenario_service import check_scenario_one
 from .db.session import get_db 
 app = FastAPI()
+
+@app.middleware("http")
+async def json_logging_middleware(request: Request, call_next):
+    request_body_json = None
+    try:
+        request_body_bytes = await request.body()
+        if request_body_bytes:
+            request_body_json = json.loads(request_body_bytes)
+        
+        async def receive():
+            return {"type": "http.request", "body": request_body_bytes}
+        request = Request(request.scope, receive)
+
+    except Exception:
+        request_body_json = {"error": "Could not parse request body as JSON"}
+
+    response = await call_next(request)
+
+    response_body_json = None
+    response_body_bytes = b""
+    async for chunk in response.body_iterator:
+        response_body_bytes += chunk
+    
+    try:
+        if response_body_bytes:
+            response_body_json = json.loads(response_body_bytes)
+    except Exception:
+        response_body_json = {"error": "Could not parse response body as JSON"}
+
+    log_data = {
+        "request": request_body_json,
+        "response": response_body_json,
+    }
+
+    task = BackgroundTask(log_request_response, log_data=log_data)
+
+    return Response(
+        content=response_body_bytes,
+        status_code=response.status_code,
+        headers=dict(response.headers),
+        media_type=response.media_type,
+        background=task,
+    )
 
 @app.get("/")
 def read_root():

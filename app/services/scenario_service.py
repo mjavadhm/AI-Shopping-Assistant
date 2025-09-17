@@ -23,14 +23,14 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
         response = None
 
         # --- Scenario Zero: Sanity Checks ---
-        if request.chat_id == "sanity-check-ping" and last_message == "ping":
+        if last_message == "ping":
             response = ChatResponse(message="pong")
 
-        elif request.chat_id == "sanity-check-base-key" and last_message.startswith("return base random key:"):
+        elif last_message.startswith("return base random key:"):
             key = last_message.replace("return base random key:", "").strip()
             response = ChatResponse(base_random_keys=[key])
 
-        elif request.chat_id == "sanity-check-member-key" and last_message.startswith("return member random key:"):
+        elif last_message.startswith("return member random key:"):
             key = last_message.replace("return member random key:", "").strip()
             response = ChatResponse(member_random_keys=[key])
 
