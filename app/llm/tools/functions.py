@@ -19,7 +19,7 @@ async def search_products_by_keywords(db: AsyncSession, keywords: list[str]) -> 
     if not search_results:
         return json.dumps({"status": "not_found", "message": "No products found matching the keywords."})
     
-    if len(search_results) > 50:
+    if len(search_results) > 100:
          return json.dumps({"status": "too_many_results", "count": len(search_results)})
 
     # Return the results as a JSON string, which is a standard practice.

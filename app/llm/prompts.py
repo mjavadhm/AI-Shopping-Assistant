@@ -106,6 +106,9 @@ FIND_PRODUCT_PROMPTS = {
         4.  **If NO**: You have used all available details, but the results are still too broad. It is impossible to choose one. Your final output must be the string: `AUTOMATION_FAILURE_TOO_MANY_RESULTS`.
 
 4.  **Failure Condition**: If you have removed all `extra_keywords` and the search still results in "not_found", it means the core product does not exist. Your final output must be the string: `AUTOMATION_FAILURE_NOT_FOUND`.
+
+5.  **Final Output**:
+    -   If a single best match is found, your final output is the full product name. **This output MUST be a single line and contain NO extra text or formatting.**
 """
 }
 
