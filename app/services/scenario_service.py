@@ -158,7 +158,7 @@ async def scenario_three(request: ChatRequest, db: AsyncSession) -> ChatResponse
     llm_response = await simple_openai_gpt_request(
         message=final_prompt,
         systemprompt=system_prompt,
-        model="gpt-4.1-mini",
+        model="gpt-5",
     )
     logger.info(f"-> Raw response from LLM: {llm_response}")
     final_answer = parse_llm_response_to_number(llm_response)
@@ -173,7 +173,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession) -
     llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
         message=user_message,
         systemprompt=system_prompt,
-        model="gpt-5",
+        model="gpt-4.1-mini",
         tools=FIRST_SCENARIO_TOOLS
     )
     tools_answer = []
