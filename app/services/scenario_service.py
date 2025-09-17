@@ -128,9 +128,9 @@ async def scenario_three(request: ChatRequest, db: AsyncSession) -> ChatResponse
     logger.info(f"-> Shop IDs to fetch: {list(set(shop_ids))}")
     shops_with_details = await repository.get_shops_with_details_by_ids(db, list(set(shop_ids)))
     shop_details_map = {shop.id: shop for shop in shops_with_details}
-    logger.info(f"-> Successfully fetched details for {len(shop_details_map)} shops.")
+    # logger.info(f"-> Successfully fetched details for {len(shop_details_map)} shops.")
 
-    logger.info("STEP 4: Combining all data to create the final context...")
+    # logger.info("STEP 4: Combining all data to create the final context...")
     
     sellers_context = []
     for member in member_objects:
@@ -142,11 +142,10 @@ async def scenario_three(request: ChatRequest, db: AsyncSession) -> ChatResponse
                 "shop_score": shop_info.score,
                 "has_warranty": shop_info.has_warranty
             })
-    logger.info(f"-> Final sellers_context being sent to LLM: {json.dumps(sellers_context, ensure_ascii=False, indent=2)}")
+    # logger.info(f"-> Final sellers_context being sent to LLM: {json.dumps(sellers_context, ensure_ascii=False, indent=2)}")
     if not sellers_context:
          raise HTTPException(status_code=404, detail=f"Could not construct complete seller details for product: {first_key}")
 
-    # --- Step 5 & 6: Call LLM and process the response ---
     context_str = json.dumps(sellers_context, ensure_ascii=False, indent=2)
     context_str = f"total shops:{str(len(shop_details_map))}\n\n\n" + context_str
     final_prompt = SCENARIO_THREE_PROMPTS["final_prompt_template"].format(
