@@ -101,6 +101,9 @@ async def simple_openai_gpt_request_with_tools(
             messages.append({"role": "user", "content": message})
         if tools_answer:
             messages += tools_answer
+        
+        logger.info(f"--> Sending payload to LLM: {messages}")
+        
         response = await async_client.chat.completions.create(
             model=model,
             messages=messages,

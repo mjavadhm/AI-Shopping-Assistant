@@ -81,7 +81,7 @@ async def scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
         tools=FIRST_SCENARIO_TOOLS
     )
     tools_answer = []
-    while True:
+    for _ in range(5): # A for loop is safer than a while True loop here.
         if tool_calls:
             tools_answer = await tool_handler.handle_tool_call(tool_calls, tools_answer)
             
@@ -89,7 +89,8 @@ async def scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
                 message=user_message,
                 systemprompt=system_prompt,
                 model="gpt-4.1-mini",
-                tools=FIRST_SCENARIO_TOOLS
+                tools=FIRST_SCENARIO_TOOLS,
+                tools_answer=tools_answer
             )
         else:
             break
