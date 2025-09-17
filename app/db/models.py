@@ -8,7 +8,7 @@ from sqlalchemy import (
     ForeignKey
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, relationship
 
 
 Base = declarative_base()
@@ -97,6 +97,7 @@ class Shop(Base):
     city_id = Column(BigInteger, ForeignKey("cities.id"))
     score = Column(Float)
     has_warranty = Column(Boolean)
+    city = relationship("City") 
 
 
 
