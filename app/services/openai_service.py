@@ -19,7 +19,7 @@ async def simple_openai_gpt_request(
     systemprompt: str,
     model: str = 'gpt-4.1-mini',
     chat_history: Optional[List[dict]] = None
-) -> tuple:
+) -> str:
     """
     Sends a chat completion request to OpenAI GPT model asynchronously.
 
@@ -30,7 +30,7 @@ async def simple_openai_gpt_request(
         chat_history (Optional[List[dict]], optional): Previous chat history messages. Defaults to None.
 
     Returns:
-        tuple: (response_content) where response_content is the model's reply.
+        string: (response_content) where response_content is the model's reply.
 
     Raises:
         Exception: If the request fails or an error occurs.

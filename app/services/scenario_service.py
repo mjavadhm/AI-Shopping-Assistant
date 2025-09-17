@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.openai_service import simple_openai_gpt_request
-from app.llm.prompts import SCENARIO_ONE_PROMPTS
+from app.llm.prompts import SCENARIO_ONE_PROMPTS, ROUTER_PROMPT
 from app.db.session import get_db
 from app.db import repository
 from app.core.logger import logger
@@ -35,12 +35,38 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
             response = ChatResponse(member_random_keys=[key])
 
         else:
-            # if request.chat_id == "scenario-one":
-            response = await scenario_one(request, db=db)
+            scenario = await classify_scenario(request)
+            logger.info(f"CLASSIFIED SCENARIO: {scenario}")
+            if scenario == "SCENARIO_1_DIRECT_SEARCH":
+                response = await scenario_one(request, db=db)
             
         return response
     except Exception as e:
         logger.error(e,exc_info=True)
+
+
+
+
+async def classify_scenario(request: ChatRequest) -> str:
+    """
+    Classifies the user's request into a specific scenario using the router prompt.
+    """
+    try:
+        system_prompt = ROUTER_PROMPT.get("main_prompt", "")
+        last_message = request.messages[-1].content.strip()
+
+        llm_response = await simple_openai_gpt_request(
+            message=last_message,
+            systemprompt=system_prompt,
+            model="gpt-4.1-mini",
+                    
+        )
+
+        scenario = llm_response.strip()
+        return scenario
+    except Exception as e:
+        logger.error(e,exc_info=True)
+
 
 async def scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     system_prompt = SCENARIO_ONE_PROMPTS.get("main_prompt", "")
