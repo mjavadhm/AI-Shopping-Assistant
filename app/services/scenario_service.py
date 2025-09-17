@@ -114,7 +114,16 @@ async def scenario_three(request: ChatRequest, db: AsyncSession) -> ChatResponse
 
     if not product or not product.members:
         raise HTTPException(status_code=404, detail=f"No sellers found for product: {first_key}")
+    members_list = product.members
+    
+    logger.info(f"Type of product.members: {type(members_list)}")
+    logger.info(f"Content of product.members: {members_list}")
 
+    if not isinstance(members_list, list):
+        raise HTTPException(status_code=500, detail="Members data is not a list as expected.")
+    
+    if not members_list:
+        raise HTTPException(status_code=404, detail=f"Seller list is empty for product: {first_key}")
     try:
         members_list = json.loads(product.members)
         if not isinstance(members_list, list):
