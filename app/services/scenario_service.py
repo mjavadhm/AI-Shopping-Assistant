@@ -1,14 +1,15 @@
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Optional
+from typing import List, Optional, Tuple 
 import json
 
 
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.openai_service import simple_openai_gpt_request, simple_openai_gpt_request_with_tools
-from app.llm.prompts import FIND_PRODUCT_PROMPTS, ROUTER_PROMPT,SCENARIO_TWO_PROMPTS, SCENARIO_THREE_PROMPTS
+from app.llm.prompts import (FIND_PRODUCT_PROMPTS, FIRST_AGENT_PROMPT, ROUTER_PROMPT,
+    SCENARIO_THREE_PROMPTS, SCENARIO_TWO_PROMPTS, SELECT_BEST_MATCH_PROMPT)
 from app.db.session import get_db
-from app.llm.tools.definitions import FIRST_SCENARIO_TOOLS
+from app.llm.tools.definitions import FIRST_AGENT_TOOLS, FIRST_SCENARIO_TOOLS
 from app.llm.tools.handler import ToolHandler
 from app.core.utils import parse_llm_response_to_number
 from app.db import repository
@@ -41,85 +42,126 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
             response = ChatResponse(member_random_keys=[key])
 
         else:
-            scenario = await classify_scenario(request)
-            logger.info(f"CLASSIFIED SCENARIO: {scenario}")
+            scenario, essential_keywords, descriptive_keywords = await classify_scenario(request)
+            
+            logger.info(f"CLASSIFIED SCENARIO: {scenario}, ESSENTIAL: {essential_keywords}, DESCRIPTIVE: {descriptive_keywords}")
+            found_key = await find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db, essential_keywords=essential_keywords, descriptive_keywords=descriptive_keywords)
+            if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
+                 return ChatResponse(message="متاسفانه محصول مورد نظر با این مشخصات یافت نشد.")
+             
             if scenario == "SCENARIO_1_DIRECT_SEARCH":
-                response = await scenario_one(request, db=db)
+                return ChatResponse(base_random_keys=[found_key]) 
+                # response = await scenario_one(request, db=db, essential_keywords=essential_keywords, descriptive_keywords=descriptive_keywords)
             elif scenario == "SCENARIO_2_FEATURE_EXTRACTION":
-                response = await scenario_two(request, db=db)
+                response = await scenario_two(request, db=db, found_key=found_key)
             elif scenario == "SCENARIO_3_SELLER_INFO":
-                response = await scenario_three(request, db=db)
+                response = await scenario_three(request, db=db, found_key=found_key)
         return response
     except Exception as e:
         logger.error(e,exc_info=True)
 
 
-
-
-async def classify_scenario(request: ChatRequest) -> str:
+async def classify_scenario(request: ChatRequest) -> Tuple[str, List[str], List[str]]:
     """
-    Classifies the user's request into a specific scenario using the router prompt.
+    Classifies the user's request into a scenario and extracts keywords using tool calls.
     """
     try:
-        system_prompt = ROUTER_PROMPT.get("main_prompt", "")
+        system_prompt = FIRST_AGENT_PROMPT.get("main_prompt", "")
         last_message = request.messages[-1].content.strip()
 
-        llm_response = await simple_openai_gpt_request(
+        _, tool_calls = await simple_openai_gpt_request_with_tools(
             message=last_message,
             systemprompt=system_prompt,
             model="gpt-5-mini",
-                    
+            tools=FIRST_AGENT_TOOLS
         )
 
-        scenario = llm_response.strip()
-        return scenario
+        # --- مقادیر پیش‌فرض برای جلوگیری از خطا ---
+        scenario = "UNCATEGORIZED"
+        essential_keywords = []
+        descriptive_keywords = []
+
+        if not tool_calls:
+            logger.warning("No tool calls returned from the model.")
+            return scenario, essential_keywords, descriptive_keywords
+
+        for tool_call in tool_calls:
+            logger.info(f"Processing tool call: {tool_call.function.name}")
+            try:
+                parsed_args = json.loads(tool_call.function.arguments)
+                if tool_call.function.name == "classify_user_request":
+                    scenario = parsed_args.get("scenario", "UNCATEGORIZED")
+                elif tool_call.function.name == "extract_search_keywords":
+                    essential_keywords = parsed_args.get("essential_keywords", [])
+                    descriptive_keywords = parsed_args.get("descriptive_keywords", [])
+            except json.JSONDecodeError:
+                logger.error(f"Failed to parse arguments for tool {tool_call.function.name}")
+
+        return scenario, essential_keywords, descriptive_keywords
+        
     except Exception as e:
-        logger.error(e,exc_info=True)
+        logger.error(e, exc_info=True)
+        # در صورت بروز خطا، مقادیر پیش‌فرض امن برگردانده می‌شود
+        return "UNCATEGORIZED", [], []
 
 
-async def scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
+# async def classify_scenario(request: ChatRequest) -> str:
+#     """
+#     Classifies the user's request into a specific scenario using the router prompt.
+#     """
+#     try:
+#         system_prompt = ROUTER_PROMPT.get("main_prompt", "")
+#         last_message = request.messages[-1].content.strip()
+
+#         llm_response = await simple_openai_gpt_request(
+#             message=last_message,
+#             systemprompt=system_prompt,
+#             model="gpt-5-mini",
+                    
+#         )
+
+#         scenario = llm_response.strip()
+#         return scenario
+#     except Exception as e:
+#         logger.error(e,exc_info=True)
+
+
+# async def scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
+#     user_message = request.messages[-1].content.strip()
+#     found_keys = await find_exact_product_name_service(user_message, db)
+#     return ChatResponse(base_random_keys=found_keys)
+
+async def scenario_two(request: ChatRequest, db: AsyncSession, found_key) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
-    found_keys = await find_exact_product_name_service(user_message, db)
-    return ChatResponse(base_random_keys=found_keys)
-
-async def scenario_two(request: ChatRequest, db: AsyncSession) -> ChatResponse:
-    user_message = request.messages[-1].content.strip()
-    found_keys = await find_exact_product_name_service(user_message, db)
-    if found_keys:
-        first_key = found_keys[0]
-        product = await repository.get_product_by_random_key(db, first_key)
     
-        message = f"user input:{user_message}\n\nproduct_feautures:{str(product.extra_features)}"
-        system_prompt = SCENARIO_TWO_PROMPTS.get("main_prompt_step_2", "")
+    product = await repository.get_product_by_random_key(db, first_key)
+    
+    message = f"user input:{user_message}\n\nproduct_feautures:{str(product.extra_features)}"
+    system_prompt = SCENARIO_TWO_PROMPTS.get("main_prompt_step_2", "")
 
-        llm_response = await simple_openai_gpt_request(
+    llm_response = await simple_openai_gpt_request(
                 message=message,
                 systemprompt=system_prompt,
                 model="gpt-5-mini",
                         
             )
         
-        logger.info(f"llm response:{llm_response}")
-        return ChatResponse(message=llm_response)
+    logger.info(f"llm response:{llm_response}")
+    return ChatResponse(message=llm_response)
 
-async def scenario_three(request: ChatRequest, db: AsyncSession) -> ChatResponse:
+async def scenario_three(request: ChatRequest, db: AsyncSession, found_key) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
     
-    found_keys = await find_exact_product_name_service(user_message, db)
-    if not found_keys:
-        raise HTTPException(status_code=404, detail="Product not found.")
-
-    first_key = found_keys[0]
-    product = await repository.get_product_by_random_key(db, first_key)
+    product = await repository.get_product_by_random_key(db, found_key)
 
     if not product or not product.members:
-        raise HTTPException(status_code=404, detail=f"No sellers found for product: {first_key}")
+        raise HTTPException(status_code=404, detail=f"No sellers found for product: {found_key}")
     member_keys = product.members
     logger.info(f"-> Member keys to fetch: {member_keys}")
     member_objects = await repository.get_members_by_keys(db, member_keys)
 
     if not member_objects:
-        raise HTTPException(status_code=404, detail=f"Seller details could not be found for product: {first_key}")
+        raise HTTPException(status_code=404, detail=f"Seller details could not be found for product: {found_key}")
     logger.info(f"-> Successfully fetched {len(member_objects)} Member objects.")
     
     logger.info("STEP 3: Fetching Shop details...")
@@ -144,7 +186,7 @@ async def scenario_three(request: ChatRequest, db: AsyncSession) -> ChatResponse
             })
     # logger.info(f"-> Final sellers_context being sent to LLM: {json.dumps(sellers_context, ensure_ascii=False, indent=2)}")
     if not sellers_context:
-         raise HTTPException(status_code=404, detail=f"Could not construct complete seller details for product: {first_key}")
+         raise HTTPException(status_code=404, detail=f"Could not construct complete seller details for product: {found_key}")
 
     context_str = json.dumps(sellers_context, ensure_ascii=False, indent=2)
     context_str = f"total shops:{str(len(shop_details_map))}\n\n\n" + context_str
@@ -156,8 +198,8 @@ async def scenario_three(request: ChatRequest, db: AsyncSession) -> ChatResponse
     logger.info(f"-> final_prompt: {final_prompt}")
     logger.info(f"-> system_prompt: {system_prompt}")
     llm_response = await simple_openai_gpt_request(
-        message=final_prompt,
-        systemprompt=system_prompt,
+        message='',
+        systemprompt=final_prompt,
         model="gpt-5",
     )
     logger.info(f"-> Raw response from LLM: {llm_response}")
@@ -167,11 +209,19 @@ async def scenario_three(request: ChatRequest, db: AsyncSession) -> ChatResponse
     return ChatResponse(message=final_answer)
     
 
-async def find_exact_product_name_service(user_message: str, db: AsyncSession) -> Optional[str]:
-    system_prompt = FIND_PRODUCT_PROMPTS.get("main_prompt", "")
+async def find_exact_product_name_service(user_message: str, db: AsyncSession, essential_keywords: List[str], descriptive_keywords: List[str]) -> Optional[str]:
+    product_names = await repository.search_products_by_keywords(
+        db=db,
+        essential_keywords=essential_keywords,
+        descriptive_keywords=descriptive_keywords
+    )
+    system_prompt = SELECT_BEST_MATCH_PROMPT.get("main_prompt_template", "").format(
+        user_query = user_message,
+        search_results_str=product_names
+    )
     tool_handler = ToolHandler(db=db)
     llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
-        message=user_message,
+        message="",
         systemprompt=system_prompt,
         model="gpt-5-mini",
         tools=FIRST_SCENARIO_TOOLS
@@ -197,4 +247,36 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession) -
     logger.info(f"cleaned name:{p_name}")
     found_keys = await repository.search_product_by_name(db=db, product_name=p_name)
     logger.info(f"found_keys: {found_keys}")
-    return found_keys
+    return found_keys[0] if found_keys else None
+
+# async def find_exact_product_name_service(user_message: str, db: AsyncSession) -> Optional[str]:
+#     system_prompt = FIND_PRODUCT_PROMPTS.get("main_prompt", "")
+#     tool_handler = ToolHandler(db=db)
+#     llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
+#         message=user_message,
+#         systemprompt=system_prompt,
+#         model="gpt-5-mini",
+#         tools=FIRST_SCENARIO_TOOLS
+#     )
+#     tools_answer = []
+#     for _ in range(5):
+#         if tool_calls:
+#             tools_answer = await tool_handler.handle_tool_call(tool_calls, tools_answer)
+            
+#             llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
+#                 message=user_message,
+#                 systemprompt=system_prompt,
+#                 model="gpt-5-mini",
+#                 tools=FIRST_SCENARIO_TOOLS,
+#                 tools_answer=tools_answer
+#             )
+#         else:
+#             break
+    
+#     logger.info(f"llm_response: {llm_response}")
+#     p_name = llm_response.split('\n')[0]
+#     p_name = p_name.strip()
+#     logger.info(f"cleaned name:{p_name}")
+#     found_keys = await repository.search_product_by_name(db=db, product_name=p_name)
+#     logger.info(f"found_keys: {found_keys}")
+#     return found_keys

@@ -21,6 +21,29 @@ search_products_tool = {
         },
     },
 }
+extract_search_keywords_tool = {
+    "type": "function",
+    "function": {
+        "name": "extract_search_keywords",
+        "description": "Extracts and structures keywords from a user's message, preparing them for a product search.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "essential_keywords": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "A list of core keywords that DEFINE the product. e.g., ['فلاور بگ', 'گوشی', 'سامسونگ']."
+                },
+                "descriptive_keywords": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "A list of optional, descriptive keywords that DESCRIBE the product's features. e.g., ['رز سفید', 'مشکی']."
+                }
+            },
+            "required": ["essential_keywords"],
+        },
+    },
+}
 
 
 get_feature_tool = {
@@ -44,6 +67,24 @@ get_feature_tool = {
         },
     },
 }
+classify_request_tool = {
+    "type": "function",
+    "function": {
+        "name": "classify_user_request",
+        "description": "Classifies the user's request into a scenario",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "scenario": {
+                    "type": "string",
+                    "description": "The classified scenario name (e.g., 'SCENARIO_1_DIRECT_SEARCH')."
+                },
+            },
+            "required": ["scenario"],
+        },
+    },
+}
+
 
 FIRST_SCENARIO_TOOLS = [
     search_products_tool,
@@ -51,4 +92,8 @@ FIRST_SCENARIO_TOOLS = [
 
 SECOND_SCENARIO_TOOLS = [
     get_feature_tool,
+]
+FIRST_AGENT_TOOLS = [
+    classify_request_tool,
+    extract_search_keywords_tool,
 ]
