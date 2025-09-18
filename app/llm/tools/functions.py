@@ -28,10 +28,10 @@ async def search_products_by_keywords(
     )
     
     if not search_results:
-        return json.dumps({"status": "not_found", "message": """No products found matching the keywords.\nYour keywords were too specific. You MUST try again.\nCall the tool again, but this time **remove one keyword** from your `descriptive_keywords`.\nContinue this process of removing descriptive keywords one by one until you get a result. If all descriptive keywords are removed and you still get "not_found", start removing from `essential_keywords`."""})
+        return json.dumps({"status": "not_found", "message": """No products found matching the keywords.\ntry using some essential_keywords in descriptive_keywords or change keywords if still getting this error"""})
     
     if len(search_results) > 100:
-         return json.dumps({"status": "too_many_results\nThe search is too general. You need to make it more specific.\nYou MUST call the tool again, this time **adding one more specific keyword** from the user's original query to your search.", "count": len(search_results)})
+         return json.dumps({"status": "too_many_results\nThe search is too general.\n try using some specific keywords in essential_keywords or adding new keywords to your search.", "count": len(search_results)})
 
     # Return the results as a JSON string
     return json.dumps({"status": "success", "results": search_results}, ensure_ascii=False)

@@ -293,7 +293,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
         descriptive_keywords=descriptive_keywords
     )
     if not product_names:
-        product_names =  json.dumps({"status": "not_found", "message": """No products found matching the keywords.\ntry using some essential_keywords in descriptive_keywords or change keywords if still getting this er"""})
+        product_names =  json.dumps({"status": "not_found", "message": """No products found matching the keywords.\ntry using some essential_keywords in descriptive_keywords or change keywords if still getting this error"""})
     
     if len(product_names) > 100:
         logger.warning(f"""Too many results ({len(product_names)})""")
