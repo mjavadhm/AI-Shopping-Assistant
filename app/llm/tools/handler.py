@@ -11,9 +11,9 @@ class ToolHandler:
     def __init__(self, db: AsyncSession):
         self.db = db
         self._tool_map = {
-            "search_products_by_keywords": tool_functions.search_products_by_keywords,
+            "full_text_search_products_by_keywords": tool_functions.search_products_by_keywords,
             "get_product_feature": tool_functions.get_product_feature,
-            "search_products_by_keywords_like": tool_functions.search_products_by_keywords_like,
+            "search_products_by_keywords": tool_functions.search_products_by_keywords_like,
         }
 
     async def handle_tool_call(self, tool_calls, tools_answer) -> dict | None:

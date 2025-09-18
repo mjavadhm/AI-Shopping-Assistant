@@ -348,7 +348,7 @@ async def old_find_exact_product_name_service(user_message: str, db: AsyncSessio
         message=user_message,
         systemprompt=system_prompt,
         model="gpt-4.1-mini",
-        tools=FIRST_SCENARIO_TOOLS
+        tools=OLD_FIRST_SCENARIO_TOOLS
     )
     tools_answer = []
     for _ in range(5):

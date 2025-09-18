@@ -1,7 +1,7 @@
 search_products_tool = {
     "type": "function",
     "function": {
-        "name": "search_products_by_keywords",
+        "name": "full_text_search_products_by_keywords",
         "description": "Searches the product database based on essential and descriptive keywords from the user's query.",
         "parameters": {
             "type": "object",
@@ -24,7 +24,7 @@ search_products_tool = {
 old_search_products_tool = {
     "type": "function",
     "function": {
-        "name": "search_products_by_keywords_like",
+        "name": "search_products_by_keywords",
         "description": "Searches the product database based on a list of keywords from the user's query. Use this to find the product the user is asking for.",
         "parameters": {
             "type": "object",
