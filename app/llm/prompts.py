@@ -102,7 +102,7 @@ You are an expert AI product matching engine. Your sole objective is to analyze 
 
 
 ### YOUR TASK ###
-Now, based on the provided inputs, return the single best match or `NO_MATCH_FOUND`.
+Now, based on the provided inputs, return the single best match.
 """
 }
 
