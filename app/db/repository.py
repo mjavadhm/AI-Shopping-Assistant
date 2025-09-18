@@ -101,10 +101,33 @@ async def get_product_features_by_name(db: AsyncSession, product_name: str) -> O
     features = result.scalar_one_or_none()
     return features if features else None
 
+async def get_product_rkey_by_name_like(db: AsyncSession, product_name: str) -> Optional[models.BaseProduct]:
+    
+    keywords = product_name.split()
+    conditions = and_(*[models.BaseProduct.persian_name.ilike(f"%{keyword}%") for keyword in keywords])
+    query = select(models.BaseProduct.random_key).where(conditions)
+    result = await db.execute(query)
+    
+    keys = result.scalars().all()
+    
+    if keys:
+        return keys
+        
+    return None
+    return 
+
+
 async def get_product_by_name_like(db: AsyncSession, product_name: str) -> Optional[models.BaseProduct]:
-    query = select(models.BaseProduct).where(
-        models.BaseProduct.persian_name.contains(product_name)
-    )
+    
+    # query = select(models.BaseProduct).where(
+    #     models.BaseProduct.persian_name.contains(product_name)
+    # )
+    
+    # NEW CODE
+    keywords = product_name.split()
+    conditions = and_(*[models.BaseProduct.persian_name.ilike(f"%{keyword}%") for keyword in keywords])
+    query = select(models.BaseProduct).where(conditions)
+    # END NEW CODE
     
     result = await db.execute(query)
     

@@ -337,7 +337,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
     found_keys = await repository.search_product_by_name(db=db, product_name=p_name)
     if not found_keys:
         logger.info("No matching product keys found.trying to search by like.")
-        found_keys = await repository.get_product_by_name_like(db=db, product_name=p_name)
+        found_keys = await repository.get_product_rkey_by_name_like(db=db, product_name=p_name)
     logger.info(f"found_keys: {found_keys}")
     return found_keys[0] if found_keys else None
 
@@ -370,5 +370,8 @@ async def old_find_exact_product_name_service(user_message: str, db: AsyncSessio
     p_name = p_name.strip()
     logger.info(f"cleaned name:{p_name}")
     found_keys = await repository.search_product_by_name(db=db, product_name=p_name)
+    if not found_keys:
+        logger.info("No matching product keys found.trying to search by like.")
+        found_keys = await repository.get_product_rkey_by_name_like(db=db, product_name=p_name)
     logger.info(f"found_keys: {found_keys}")
     return found_keys[0] if found_keys else None
