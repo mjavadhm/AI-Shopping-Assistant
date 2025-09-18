@@ -99,6 +99,17 @@ async def get_product_features_by_name(db: AsyncSession, product_name: str) -> O
     features = result.scalar_one_or_none()
     return features if features else None
 
+async def get_product_by_name_like(db: AsyncSession, product_name: str) -> Optional[models.BaseProduct]:
+    query = select(models.BaseProduct).where(
+        models.BaseProduct.persian_name.contains(product_name)
+    )
+    
+    result = await db.execute(query)
+    
+    product = result.scalars().first()
+    
+    return product
+
 async def get_product_by_random_key(db: AsyncSession, random_key: str) -> Optional[models.BaseProduct]:
     
     query = select(models.BaseProduct).where(

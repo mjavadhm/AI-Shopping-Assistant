@@ -133,7 +133,7 @@ async def classify_scenario(request: ChatRequest) -> Tuple[str, List[str], List[
 
 async def scenario_two(request: ChatRequest, db: AsyncSession, found_key) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
-    
+    logger.info(f"found_key in scenario two:{found_key}")
     product = await repository.get_product_by_random_key(db, found_key)
     
     message = f"user input:{user_message}\n\nproduct_feautures:{str(product.extra_features)}"
@@ -293,7 +293,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
         descriptive_keywords=descriptive_keywords
     )
     if not product_names:
-        return json.dumps({"status": "not_found", "message": "No products found matching the keywords."})
+        product_names =  json.dumps({"status": "not_found", "message": "No products found matching the keywords."})
     
     if len(product_names) > 100:
         logger.warning(f"Too many results ({len(product_names)}), truncating to 100.")
@@ -329,6 +329,9 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
     p_name = p_name.strip()
     logger.info(f"cleaned name:{p_name}")
     found_keys = await repository.search_product_by_name(db=db, product_name=p_name)
+    if not found_keys:
+        logger.info("No matching product keys found.trying to search by like.")
+        found_keys = await repository.get_product_by_name_like(db=db, product_name=p_name)
     logger.info(f"found_keys: {found_keys}")
     return found_keys[0] if found_keys else None
 
