@@ -79,8 +79,8 @@ You will now enter a loop of refining your keywords based on the tool's response
 
 
 **3. Final Output Generation:**
--   If a single best match is found, your final output is its full product name. (e.g., "فرشینه مخمل گرد طرح کودک کد F12 قطر 1 متر")
--   If you cannot isolate a single best match (e.g., you run out of keywords to add/remove), your final output must be the exact string: `AUTOMATION_FAILURE_TOO_MANY_RESULTS`."""
+-   If a single best match is found, your final output is its full product name. (e.g., فرشینه مخمل گرد طرح کودک کد F12 قطر 1 متر)
+"""
 }
 
 # -   **If the response is `success`**:
