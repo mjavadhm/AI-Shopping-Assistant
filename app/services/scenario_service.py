@@ -292,6 +292,12 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
         essential_keywords=essential_keywords,
         descriptive_keywords=descriptive_keywords
     )
+    if not product_names:
+        return json.dumps({"status": "not_found", "message": "No products found matching the keywords."})
+    
+    if len(product_names) > 100:
+        logger.warning(f"Too many results ({len(product_names)}), truncating to 100.")
+        product_names = json.dumps({"status": "too_many_results", "count": len(product_names)})
     system_prompt = SELECT_BEST_MATCH_PROMPT.get("main_prompt_template", "").format(
         user_query = user_message,
         search_results_str=product_names
