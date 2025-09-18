@@ -47,7 +47,7 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
             logger.info(f"CLASSIFIED SCENARIO: {scenario}, ESSENTIAL: {essential_keywords}, DESCRIPTIVE: {descriptive_keywords}")
             found_key = await find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db, essential_keywords=essential_keywords, descriptive_keywords=descriptive_keywords)
             if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
-                 return ChatResponse(message="متاسفانه محصول مورد نظر با این مشخصات یافت نشد.")
+                raise HTTPException(status_code=404, detail="No products found matching the keywords.")
              
             if scenario == "SCENARIO_1_DIRECT_SEARCH":
                 return ChatResponse(base_random_keys=[found_key]) 
