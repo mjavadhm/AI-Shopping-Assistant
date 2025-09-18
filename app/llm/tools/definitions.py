@@ -9,12 +9,12 @@ search_products_tool = {
                 "essential_keywords": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "A list of core keywords that DEFINE the product. e.g., ['فلاور بگ', 'گوشی', 'سامسونگ']."
+                    "description": "A list of core keywords that DEFINE the product. e.g., ['فلاور بگ', 'گوشی', 'سامسونگ']. i will use this in full text search with and"
                 },
                 "descriptive_keywords": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "A list of optional, descriptive keywords that DESCRIBE the product's features. e.g., ['رز سفید', 'آفتابگردان', 'مشکی', '256 گیگ']."
+                    "description": "A list of optional, descriptive keywords that DESCRIBE the product's features. e.g., ['رز سفید', 'آفتابگردان', 'مشکی', '256 گیگ'].i will use this in full text search with or"
                 }
             },
             "required": ["essential_keywords"],
