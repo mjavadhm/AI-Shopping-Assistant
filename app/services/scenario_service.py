@@ -306,7 +306,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
     llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
         message="",
         systemprompt=system_prompt,
-        model="gpt-4.1-nano",
+        model="gpt-4.1-mini",
         tools=FIRST_SCENARIO_TOOLS
     )
     tools_answer = []
@@ -317,7 +317,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
             llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
                 message=user_message,
                 systemprompt=system_prompt,
-                model="gpt-4.1-nano",
+                model="gpt-4.1-mini",
                 tools=FIRST_SCENARIO_TOOLS,
                 tools_answer=tools_answer
             )
