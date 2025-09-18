@@ -293,11 +293,11 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
         descriptive_keywords=descriptive_keywords
     )
     if not product_names:
-        product_names =  json.dumps({"status": "not_found", "message": """No products found matching the keywords.\nYour keywords were too specific. You MUST try again.\nCall the tool again, but this time **remove one keyword** from your `descriptive_keywords`.\nContinue this process of removing descriptive keywords one by one until you get a result. If all descriptive keywords are removed and you still get "not_found", start removing from `essential_keywords`."""})
+        product_names =  json.dumps({"status": "not_found", "message": """No products found matching the keywords.\ntry using some essential_keywords in descriptive_keywords or change keywords if still getting this er"""})
     
     if len(product_names) > 100:
         logger.warning(f"""Too many results ({len(product_names)})""")
-        product_names = json.dumps({"status": """too_many_results\nThe search is too general. You need to make it more specific.\nYou MUST call the tool again, this time **adding one more specific keyword** from the user's original query to your search.""", "count": len(product_names)})
+        product_names = json.dumps({"status": """too_many_results\nThe search is too general.\n try using some specific keywords in essential_keywords or adding new keywords to your search.""", "count": len(product_names)})
     system_prompt = SELECT_BEST_MATCH_PROMPT.get("main_prompt_template", "").format(
         user_query = user_message,
         search_results_str=product_names
