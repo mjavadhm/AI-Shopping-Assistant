@@ -21,6 +21,25 @@ search_products_tool = {
         },
     },
 }
+old_search_products_tool = {
+    "type": "function",
+    "function": {
+        "name": "search_products_by_keywords_like",
+        "description": "Searches the product database based on a list of keywords from the user's query. Use this to find the product the user is asking for.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "keywords": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "A list of essential keywords from the user's request. e.g., ['فلاور بگ', 'رز سفید']"
+                }
+            },
+            "required": ["keywords"],
+        },
+    },
+}
+
 extract_search_keywords_tool = {
     "type": "function",
     "function": {
@@ -58,12 +77,9 @@ get_feature_tool = {
                     "type": "string",
                     "description": "نام کامل و دقیق محصول. مثال: 'پارچه تریکو جودون 1/30 لاکرا گردباف نوریس به رنگ زرد طلایی'"
                 },
-                "feature_name": {
-                    "type": "string",
-                    "description": "ویژگی خاصی که کاربر به دنبال آن است. مثال: 'عرض'"
-                }
+                
             },
-            "required": ["product_name", "feature_name"],
+            "required": ["product_name"],
         },
     },
 }
@@ -88,6 +104,9 @@ classify_request_tool = {
 
 FIRST_SCENARIO_TOOLS = [
     search_products_tool,
+]
+OLD_FIRST_SCENARIO_TOOLS = [
+    old_search_products_tool,
 ]
 
 SECOND_SCENARIO_TOOLS = [

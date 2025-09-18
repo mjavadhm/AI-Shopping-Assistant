@@ -9,7 +9,7 @@ from app.services.openai_service import simple_openai_gpt_request, simple_openai
 from app.llm.prompts import (FIND_PRODUCT_PROMPTS, FIRST_AGENT_PROMPT, ROUTER_PROMPT,
     SCENARIO_THREE_PROMPTS, SCENARIO_TWO_PROMPTS, SELECT_BEST_MATCH_PROMPT)
 from app.db.session import get_db
-from app.llm.tools.definitions import FIRST_AGENT_TOOLS, FIRST_SCENARIO_TOOLS
+from app.llm.tools.definitions import FIRST_AGENT_TOOLS, FIRST_SCENARIO_TOOLS, OLD_FIRST_SCENARIO_TOOLS
 from app.llm.tools.handler import ToolHandler
 from app.core.utils import parse_llm_response_to_number
 from app.db import repository
@@ -42,13 +42,17 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
             response = ChatResponse(member_random_keys=[key])
 
         else:
-            scenario, essential_keywords, descriptive_keywords = await classify_scenario(request)
+            # scenario, essential_keywords, descriptive_keywords = await classify_scenario(request)
             
-            logger.info(f"CLASSIFIED SCENARIO: {scenario}, ESSENTIAL: {essential_keywords}, DESCRIPTIVE: {descriptive_keywords}")
-            found_key = await find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db, essential_keywords=essential_keywords, descriptive_keywords=descriptive_keywords)
+            # logger.info(f"CLASSIFIED SCENARIO: {scenario}, ESSENTIAL: {essential_keywords}, DESCRIPTIVE: {descriptive_keywords}")
+            # found_key = await find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db, essential_keywords=essential_keywords, descriptive_keywords=descriptive_keywords)
+            # if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
+            #     raise HTTPException(status_code=404, detail="No products found matching the keywords.")
+            scenario = await old_classify_scenario(request)
+            logger.info(f"CLASSIFIED SCENARIO: {scenario}")
+            found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
             if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
                 raise HTTPException(status_code=404, detail="No products found matching the keywords.")
-             
             if scenario == "SCENARIO_1_DIRECT_SEARCH":
                 return ChatResponse(base_random_keys=[found_key]) 
                 # response = await scenario_one(request, db=db, essential_keywords=essential_keywords, descriptive_keywords=descriptive_keywords)
@@ -105,25 +109,25 @@ async def classify_scenario(request: ChatRequest) -> Tuple[str, List[str], List[
         return "UNCATEGORIZED", [], []
 
 
-# async def classify_scenario(request: ChatRequest) -> str:
-#     """
-#     Classifies the user's request into a specific scenario using the router prompt.
-#     """
-#     try:
-#         system_prompt = ROUTER_PROMPT.get("main_prompt", "")
-#         last_message = request.messages[-1].content.strip()
+async def old_classify_scenario(request: ChatRequest) -> str:
+    """
+    Classifies the user's request into a specific scenario using the router prompt.
+    """
+    try:
+        system_prompt = ROUTER_PROMPT.get("main_prompt", "")
+        last_message = request.messages[-1].content.strip()
 
-#         llm_response = await simple_openai_gpt_request(
-#             message=last_message,
-#             systemprompt=system_prompt,
-#             model="gpt-4.1-nano",
+        llm_response = await simple_openai_gpt_request(
+            message=last_message,
+            systemprompt=system_prompt,
+            model="gpt-4.1-nano",
                     
-#         )
+        )
 
-#         scenario = llm_response.strip()
-#         return scenario
-#     except Exception as e:
-#         logger.error(e,exc_info=True)
+        scenario = llm_response.strip()
+        return scenario
+    except Exception as e:
+        logger.error(e,exc_info=True)
 
 
 # async def scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
@@ -335,34 +339,34 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
     logger.info(f"found_keys: {found_keys}")
     return found_keys[0] if found_keys else None
 
-# async def find_exact_product_name_service(user_message: str, db: AsyncSession) -> Optional[str]:
-#     system_prompt = FIND_PRODUCT_PROMPTS.get("main_prompt", "")
-#     tool_handler = ToolHandler(db=db)
-#     llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
-#         message=user_message,
-#         systemprompt=system_prompt,
-#         model="gpt-4.1-nano",
-#         tools=FIRST_SCENARIO_TOOLS
-#     )
-#     tools_answer = []
-#     for _ in range(5):
-#         if tool_calls:
-#             tools_answer = await tool_handler.handle_tool_call(tool_calls, tools_answer)
+async def old_find_exact_product_name_service(user_message: str, db: AsyncSession) -> Optional[str]:
+    system_prompt = FIND_PRODUCT_PROMPTS.get("main_prompt", "")
+    tool_handler = ToolHandler(db=db)
+    llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
+        message=user_message,
+        systemprompt=system_prompt,
+        model="gpt-4.1-nano",
+        tools=FIRST_SCENARIO_TOOLS
+    )
+    tools_answer = []
+    for _ in range(5):
+        if tool_calls:
+            tools_answer = await tool_handler.handle_tool_call(tool_calls, tools_answer)
             
-#             llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
-#                 message=user_message,
-#                 systemprompt=system_prompt,
-#                 model="gpt-4.1-nano",
-#                 tools=FIRST_SCENARIO_TOOLS,
-#                 tools_answer=tools_answer
-#             )
-#         else:
-#             break
+            llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
+                message=user_message,
+                systemprompt=system_prompt,
+                model="gpt-4.1-nano",
+                tools=OLD_FIRST_SCENARIO_TOOLS,
+                tools_answer=tools_answer
+            )
+        else:
+            break
     
-#     logger.info(f"llm_response: {llm_response}")
-#     p_name = llm_response.split('\n')[0]
-#     p_name = p_name.strip()
-#     logger.info(f"cleaned name:{p_name}")
-#     found_keys = await repository.search_product_by_name(db=db, product_name=p_name)
-#     logger.info(f"found_keys: {found_keys}")
-#     return found_keys
+    logger.info(f"llm_response: {llm_response}")
+    p_name = llm_response.split('\n')[0]
+    p_name = p_name.strip()
+    logger.info(f"cleaned name:{p_name}")
+    found_keys = await repository.search_product_by_name(db=db, product_name=p_name)
+    logger.info(f"found_keys: {found_keys}")
+    return found_keys[0] if found_keys else None
