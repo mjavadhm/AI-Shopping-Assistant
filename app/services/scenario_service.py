@@ -6,8 +6,8 @@ import json
 
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.openai_service import simple_openai_gpt_request, simple_openai_gpt_request_with_tools
-from app.llm.prompts import (FIND_PRODUCT_PROMPTS, FIRST_AGENT_PROMPT, ROUTER_PROMPT,
-    SCENARIO_THREE_PROMPTS, SCENARIO_TWO_PROMPTS, SELECT_BEST_MATCH_PROMPT)
+from app.llm.prompts import (FIND_PRODUCT_PROMPTS, FIRST_AGENT_PROMPT, ROUTER_PROMPT, 
+    SCENARIO_THREE_PROMPTS, SCENARIO_TWO_PROMPTS, SELECT_BEST_MATCH_PROMPT, OLD_FIND_PRODUCT_PROMPTS)
 from app.db.session import get_db
 from app.llm.tools.definitions import FIRST_AGENT_TOOLS, FIRST_SCENARIO_TOOLS, OLD_FIRST_SCENARIO_TOOLS
 from app.llm.tools.handler import ToolHandler
@@ -342,7 +342,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
     return found_keys[0] if found_keys else None
 
 async def old_find_exact_product_name_service(user_message: str, db: AsyncSession) -> Optional[str]:
-    system_prompt = FIND_PRODUCT_PROMPTS.get("main_prompt", "")
+    system_prompt = OLD_FIND_PRODUCT_PROMPTS.get("main_prompt", "")
     tool_handler = ToolHandler(db=db)
     llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
         message=user_message,
