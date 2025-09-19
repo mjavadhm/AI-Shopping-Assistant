@@ -60,7 +60,7 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
             if scenario != "SCENARIO_5_COMPARISON":
                 
                 found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
-            logger.info(f"found_key: {found_key}")
+                logger.info(f"found_key: {found_key}")
             #-----------------------------------------------------
             #with embed
             #---------------------------------------------
