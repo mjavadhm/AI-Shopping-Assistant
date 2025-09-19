@@ -68,14 +68,14 @@ product_name_keywords_tool = {
     "type": "function",
     "function": {
         "name": "extract_search_keywords",
-        "description": "Extracts the single most differentiating keyword from a user's product search query.",
+        "description": "Extracts the single most differentiating keyword from a user's product search query. This is almost always a unique code or model number.",
         "parameters": {
             "type": "object",
             "properties": {
                 "product_name_keywords": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "A list containing exactly ONE keyword that is the most unique identifier for a product. Prioritize codes or model numbers first. For example, for 'فرش نقشه برکه با کد ۸۱۰۱', the output must be ['۸۱۰۱']."
+                    "description": "A list containing exactly ONE keyword. You must isolate and extract the unique product code or model number if it exists. For example, for 'لپ تاپ 15 اینچ ایسوس مدل Zenbook Pro UX580', the output MUST be ['UX580']."
                 }
             },
             "required": ["product_name_keywords"]
