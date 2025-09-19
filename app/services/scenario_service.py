@@ -57,7 +57,9 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
             #with keyword simple
             scenario = await old_classify_scenario(request)
             logger.info(f"CLASSIFIED SCENARIO: {scenario}")
-            found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
+            if scenario != "SCENARIO_5_COMPARISON":
+                
+                found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
             logger.info(f"found_key: {found_key}")
             #-----------------------------------------------------
             #with embed
@@ -82,7 +84,7 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
             # elif scenario == "SCENARIO_4_CONVERSATIONAL_SEARCH":
             #     response = await scenario_three(request, db=db, found_key=found_key)
             elif scenario == "SCENARIO_5_COMPARISON":
-                response = await scenario_five(request, db=db, found_key=found_key)
+                response = await scenario_five(request, db=db)
         return response
     except Exception as e:
         logger.error(e,exc_info=True)
@@ -356,7 +358,7 @@ async def scenario_three(request: ChatRequest, db: AsyncSession, found_key) -> C
     
     
     
-async def scenario_five(request: ChatRequest, db: AsyncSession, found_key) -> ChatResponse:
+async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
     first_product_key, second_product_key = await find_two_product(user_message,db)
     logger.info(f"{first_product_key}    {second_product_key}")
@@ -390,7 +392,14 @@ async def find_p_in_fifth_scenario(user_message, index, db):
     )
     tool_handler = ToolHandler(db=db)
     tools_answer = []
-    for _ in range(6):
+    llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
+        message=user_message,
+        systemprompt=system_prompt,
+        model="gpt-4.1-mini",
+        tools=OLD_FIRST_SCENARIO_TOOLS,
+        tools_answer=None
+    )
+    for _ in range(5):
         if tool_calls:
             tools_answer = await tool_handler.handle_tool_call(tool_calls, tools_answer)
             
