@@ -16,8 +16,6 @@ Here are the possible scenarios you need to classify the request into:
 
 * **SCENARIO_3_SELLER_INFO**: The user's question is about the sellers of a specific product, such as the price, warranty, or location.
     * *Keywords*: "کمترین قیمت", "کدوم فروشگاه", "ارزان‌ترین", "گارانتی دارد؟".
-* **SCENARIO_4_CONVERSATIONAL_SEARCH**: The user is looking for a product but the query is general and requires follow-up questions to narrow down the results. The assistant needs to interact with the user to understand their needs better.
-    * *Keywords*: "دنبال ... هستم", "کمکم کنید", "پیشنهاد میدی؟", general product categories like "بخاری برقی".
 
 * **SCENARIO_5_COMPARISON**: The user wants to compare two or more specific products. The query explicitly mentions multiple product names.
     * *Keywords*: "کدام یک", "مقایسه", "بهتر است؟", "یا".
@@ -43,6 +41,8 @@ Now, process the latest user message and classify it into one of the scenarios.
 """
 }
 
+# * **SCENARIO_4_CONVERSATIONAL_SEARCH**: The user is looking for a product but the query is general and requires follow-up questions to narrow down the results. The assistant needs to interact with the user to understand their needs better.
+#     * *Keywords*: "دنبال ... هستم", "کمکم کنید", "پیشنهاد میدی؟", general product categories like "بخاری برقی".
 
 OLD_FIND_PRODUCT_PROMPTS = {
     "main_prompt": """you are a specialized, autonomous product search function. Your SOLE purpose is to programmatically generate the best keyword list for searching a product database. You are a component in a larger automation pipeline; your output is fed directly into another system, not a human.
@@ -103,9 +103,6 @@ You are a highly specialized AI assistant. Your ONLY function is to analyze the 
 * **SCENARIO_1_DIRECT_SEARCH**: The user is looking for a specific product.
 * **SCENARIO_2_FEATURE_EXTRACTION**: The user wants a specific feature of a product.
 * **SCENARIO_3_SELLER_INFO**: The user's question is about sellers, price, or warranty.
-* **SCENARIO_4_CONVERSATIONAL_SEARCH**: The user is looking for a product but the query is general and requires follow-up questions to narrow down the results. The assistant needs to interact with the user to understand their needs better.
-    * *Keywords*: "دنبال ... هستم", "کمکم کنید", "پیشنهاد میدی؟", general product categories like "بخاری برقی".
-
 * **SCENARIO_5_COMPARISON**: The user wants to compare two or more specific products. The query explicitly mentions multiple product names.
     * *Keywords*: "کدام یک", "مقایسه", "بهتر است؟", "یا".
 * **UNCATEGORIZED**: Greetings, non-task-related questions, etc.
@@ -144,9 +141,6 @@ You are a highly specialized AI assistant. Your ONLY function is to analyze the 
 * **SCENARIO_1_DIRECT_SEARCH**: The user is looking for a specific product.
 * **SCENARIO_2_FEATURE_EXTRACTION**: The user wants a specific feature of a product.
 * **SCENARIO_3_SELLER_INFO**: The user's question is about sellers, price, or warranty.
-* **SCENARIO_4_CONVERSATIONAL_SEARCH**: The user is looking for a product but the query is general and requires follow-up questions to narrow down the results. The assistant needs to interact with the user to understand their needs better.
-    * *Keywords*: "دنبال ... هستم", "کمکم کنید", "پیشنهاد میدی؟", general product categories like "بخاری برقی".
-
 * **SCENARIO_5_COMPARISON**: The user wants to compare two or more specific products. The query explicitly mentions multiple product names.
     * *Keywords*: "کدام یک", "مقایسه", "بهتر است؟", "یا".
 * **UNCATEGORIZED**: Greetings, non-task-related questions, etc.
@@ -183,7 +177,8 @@ You are a highly specialized AI assistant. Your ONLY function is to analyze the 
 2.  `extract_search_keywords(product_name_keywords=['چوبی'])`
 *(Reasoning: There is no unique identifier, so it falls back to the core product noun (Rule #2).)*"""
 }
-
+# * **SCENARIO_4_CONVERSATIONAL_SEARCH**: The user is looking for a product but the query is general and requires follow-up questions to narrow down the results. The assistant needs to interact with the user to understand their needs better.
+#     * *Keywords*: "دنبال ... هستم", "کمکم کنید", "پیشنهاد میدی؟", general product categories like "بخاری برقی".
 
 SELECT_BEST_MATCH_PROMPT = {
     "main_prompt_template": """### ROLE & OBJECTIVE ###
