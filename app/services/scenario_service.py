@@ -11,6 +11,7 @@ from app.services.openai_service import simple_openai_gpt_request, simple_openai
 from app.llm.prompts import (FIND_PRODUCT_PROMPTS, FIRST_AGENT_PROMPT, ROUTER_PROMPT, 
     SCENARIO_THREE_PROMPTS, SCENARIO_TWO_PROMPTS, SELECT_BEST_MATCH_PROMPT, OLD_FIND_PRODUCT_PROMPTS, SCENARIO_FIVE_PROMPTS)
 from app.db.session import get_db
+from app.db.session import AsyncSessionLocal
 from app.llm.tools.definitions import FIRST_AGENT_TOOLS, FIRST_SCENARIO_TOOLS, OLD_FIRST_SCENARIO_TOOLS, EMBED_FIRST_AGENT_TOOLS
 from app.llm.tools.handler import ToolHandler
 from app.core.http_client import post_async_request
@@ -360,72 +361,91 @@ async def scenario_three(request: ChatRequest, db: AsyncSession, found_key) -> C
     
 async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
-    first_product_key, second_product_key = await find_two_product(user_message,db)
-    logger.info(f"{first_product_key}    {second_product_key}")
+    result = await find_two_product(user_message, AsyncSessionLocal)
+
+    if result is None:
+        raise HTTPException(status_code=500, detail="Failed to process product comparison.")
+
+    first_product_key, second_product_key = result
+    logger.info(f"Found product keys: {first_product_key}, {second_product_key}")
+
+    return ChatResponse(
+        message=f"Product 1 key: {first_product_key}\nProduct 2 key: {second_product_key}"
+    )
 
     
 
-async def find_two_product(user_message, db):
+async def find_two_product(user_message, db_session_factory):
     try:
         async with asyncio.TaskGroup() as tg:
-            task1 = tg.create_task(find_p_in_fifth_scenario(user_message, 1, db))
-            task2 = tg.create_task(find_p_in_fifth_scenario(user_message, 2, db))
+            task1 = tg.create_task(find_p_in_fifth_scenario(user_message, 1, db_session_factory))
+            task2 = tg.create_task(find_p_in_fifth_scenario(user_message, 2, db_session_factory))
         
         first_product_key = task1.result()
         second_product_key = task2.result()
 
         return (first_product_key, second_product_key)
-    
     except* Exception as eg:
         logger.error("An error occurred in one of the tasks. Details:")
         for exc in eg.exceptions:
             logger.error(f"  - Exception: {exc}", exc_info=True)
-        # return (None, None)    
 
-async def find_p_in_fifth_scenario(user_message, index, db):
-    if index == 1:
-        index_str = 'first'
-    elif index == 2:
-        index_str = 'second'
-    else:
-        raise "index should be 1 or 2"
-    
-    system_prompt = SCENARIO_FIVE_PROMPTS.get("find_p_prompt", "").format(
-        index_str = index_str,
-    )
-    tool_handler = ToolHandler(db=db)
-    tools_answer = []
-    llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
-        message=user_message,
-        systemprompt=system_prompt,
-        model="gpt-4.1-mini",
-        tools=OLD_FIRST_SCENARIO_TOOLS,
-        tools_answer=None
-    )
-    for _ in range(5):
-        if tool_calls:
-            tools_answer = await tool_handler.handle_tool_call(tool_calls, tools_answer)
-            
-            llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
-                message=user_message,
-                systemprompt=system_prompt,
-                model="gpt-4.1-mini",
-                tools=OLD_FIRST_SCENARIO_TOOLS,
-                tools_answer=tools_answer
-            )
+async def find_p_in_fifth_scenario(user_message, index, db_session_factory):
+    async with db_session_factory() as db:
+        if index == 1:
+            index_str = 'first'
+        elif index == 2:
+            index_str = 'second'
         else:
-            break
-    
-    logger.info(f"llm_response: {llm_response}")
-    p_name = llm_response.split('\n')[0]
-    p_name = p_name.strip()
-    logger.info(f"cleaned name:{p_name}")
-    found_keys = await repository.search_product_by_name(db=db, product_name=p_name)
-    if not found_keys:
-        logger.info("No matching product keys found.trying to search by like.")
-        found_keys = await repository.get_product_rkey_by_name_like(db=db, product_name=p_name)
-    logger.info(f"found_keys: {found_keys}")
-    return found_keys[0] if found_keys else None
+            raise ValueError("index should be 1 or 2")
+
+        system_prompt = SCENARIO_FIVE_PROMPTS.get("find_p_prompt", "").format(
+            index_str=index_str,
+        )
+        
+        tool_handler = ToolHandler(db=db)
+        tools_answer = []
+
+        llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
+            message=user_message,
+            systemprompt=system_prompt,
+            model="gpt-4.1-mini",
+            tools=OLD_FIRST_SCENARIO_TOOLS,
+            tools_answer=None
+        )
+
+        for _ in range(5):
+            if tool_calls:
+                tools_answer = await tool_handler.handle_tool_call(tool_calls, tools_answer)
+                
+                llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
+                    message=user_message,
+                    systemprompt=system_prompt,
+                    model="gpt-4.1-mini",
+                    tools=OLD_FIRST_SCENARIO_TOOLS,
+                    tools_answer=tools_answer
+                )
+            else:
+                break
+        
+        logger.info(f"llm_response for index {index}: {llm_response}")
+        
+        if not llm_response:
+            logger.warning(f"LLM did not return a response for index {index}.")
+            return None
+            
+        p_name = llm_response.split('\n')[0].strip()
+        logger.info(f"cleaned name for index {index}:{p_name}")
+        
+        # از همان سشن 'db' برای کوئری‌های ریپازیتوری استفاده کنید
+        found_keys = await repository.search_product_by_name(db=db, product_name=p_name)
+        if not found_keys:
+            logger.info("No matching product keys found. trying to search by like.")
+            found_keys = await repository.get_product_rkey_by_name_like(db=db, product_name=p_name)
+            
+        logger.info(f"found_keys for index {index}: {found_keys}")
+        return found_keys[0] if found_keys else None
+
 
 async def find_exact_product_name_service(user_message: str, db: AsyncSession, essential_keywords: List[str], descriptive_keywords: List[str]) -> Optional[str]:
     product_names = await repository.search_products_by_keywords(
