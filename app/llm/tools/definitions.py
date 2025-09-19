@@ -68,17 +68,17 @@ product_name_keywords_tool = {
     "type": "function",
     "function": {
         "name": "extract_search_keywords",
-        "description": "Extracts the single most differentiating keyword from a user's product search query. This is almost always a unique code or model number.",
+        "description": "Extracts the single most differentiating keyword from a user's product search query. This follows a strict priority: code first, then proper name.",
         "parameters": {
             "type": "object",
             "properties": {
                 "product_name_keywords": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "A list containing exactly ONE keyword. You must isolate and extract the unique product code or model number if it exists. For example, for 'لپ تاپ 15 اینچ ایسوس مدل Zenbook Pro UX580', the output MUST be ['UX580']."
+                    "description": "A list with ONE keyword. Follow this priority: 1st, isolate a unique code/model number. 2nd, if NO code exists, isolate the unique proper name (e.g., a design name). For 'فرش ماشینی طرح افشان زمینه آبی', the output MUST be ['افشان']."
                 }
             },
-            "required": ["product_name_keywords"]
+            "required": ["required"]
         }
     }
 }
