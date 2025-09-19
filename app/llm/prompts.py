@@ -536,6 +536,54 @@ You are a highly intelligent AI shopping assistant. Your goal is to compare two 
 ### YOUR TASK
 
 Now, generate the response in the specified format.
+""",
+    "calculate_prompt": """### ROLE & OBJECTIVE ###
+You are an expert Data Analyst and Python Coder. Your task is to analyze the user's question and write a single Python function called `calculate` that computes the metric the user is asking about. You only have access to the user's question and the data structure.
+
+### RULES ###
+1.  Your output MUST be ONLY the Python code block for the `calculate(data)` function.
+2.  Do NOT write any explanations or text before or after the code.
+3.  The `calculate` function takes a list of seller dictionaries (`data`) and MUST return a **descriptive string** containing the result.
+4.  **IMPORTANT**: If the user's question is about product features (e.g., "which is heavier?", "which one is more beautiful?") and has NO RELATION to seller data (price, city, count, etc.), you MUST generate a function that simply returns `None`.
+
+### DATA STRUCTURE ###
+The function will receive data with this structure: `[{"price": int, "city": str, "shop_score": float, "has_warranty": bool}, ...]`.
+
+### EXAMPLES ###
+
+**User Question:** "کدامیک از این دو در فروشگاه‌های بیشتری موجود است؟"
+**Your Output (Python Code):**
+```python
+def calculate(data):
+    count = len(data)
+    return f"تعداد فروشندگان: {count}"
+````
+
+**User Question:** "کدام محصول سنگین تر است؟"
+**Your Output (Python Code):**
+
+```python
+def calculate(data):
+    return None
+```
+
+**User Question:** "کدام محصول فروشنده با قیمت کمتری در اهواز دارد؟"
+**Your Output (Python Code):**
+
+```python
+def calculate(data):
+    ahvaz_prices = [item['price'] for item in data if item['city'] == 'اهواز']
+    if not ahvaz_prices:
+        return "فروشنده‌ای در اهواز ندارد"
+    min_price = min(ahvaz_prices)
+    return f"ارزان‌ترین قیمت در اهواز: {min_price}"
+```
+
+### YOUR TASK
+
+Now, based on the following user question, generate the Python code.
+
+**User Question:** "{user_query}"
 """
 
 }

@@ -221,6 +221,45 @@ async def scenario_two(request: ChatRequest, db: AsyncSession, found_key) -> Cha
     logger.info(f"llm response:{llm_response}")
     return ChatResponse(message=llm_response)
 
+
+async def get_sellers_context(db, random_key):
+    product = await repository.get_product_by_random_key(db, random_key)
+
+    if not product or not product.members:
+        raise HTTPException(status_code=404, detail=f"No sellers found for product: {random_key}")
+
+    member_keys = product.members
+    member_objects = await repository.get_members_by_keys(db, member_keys)
+
+    if not member_objects:
+        raise HTTPException(status_code=404, detail=f"Seller details could not be found for product: {random_key}")
+
+    shop_ids = [member.shop_id for member in member_objects]
+    shops_with_details = await repository.get_shops_with_details_by_ids(db, list(set(shop_ids)))
+    shop_details_map = {shop.id: shop for shop in shops_with_details}
+
+    member_objects = await repository.get_members_by_keys(db, member_keys)
+
+    if not member_objects:
+        raise HTTPException(status_code=404, detail=f"Seller details could not be found for product: {random_key}")
+
+    shop_ids = [member.shop_id for member in member_objects]
+    shops_with_details = await repository.get_shops_with_details_by_ids(db, list(set(shop_ids)))
+    shop_details_map = {shop.id: shop for shop in shops_with_details}
+
+    sellers_context = []
+    for member in member_objects:
+        shop_info = shop_details_map.get(member.shop_id)
+        if shop_info and shop_info.city:
+            sellers_context.append({
+                "price": member.price,
+                "city": shop_info.city.name,
+                "shop_score": shop_info.score,
+                "has_warranty": shop_info.has_warranty
+            })
+    return sellers_context
+
+
 async def scenario_three(request: ChatRequest, db: AsyncSession, found_key) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
 
@@ -369,23 +408,16 @@ async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
         logger.error("Failed to retrieve data for one or both products in comparison.")
         raise HTTPException(status_code=500, detail="Could not process the comparison due to an internal error.")
 
-    first_product, second_product = product_data
-
+    first_product, second_product, code_to_get_info = product_data
+    
     product_map = {
         first_product.persian_name: first_product.random_key,
         second_product.persian_name: second_product.random_key
     }
 
-    product_1_details = json.dumps({
-        "persian_name": first_product.persian_name,
-        "features": first_product.extra_features or {}
-    }, ensure_ascii=False, indent=2)
+    product_1_details = get_product_detail(db, first_product, code_to_get_info)
 
-    product_2_details = json.dumps({
-        "persian_name": second_product.persian_name,
-        "features": second_product.extra_features or {}
-    }, ensure_ascii=False, indent=2)
-
+    product_2_details = get_product_detail(db, second_product, code_to_get_info)
 
     comparison_system_prompt = SCENARIO_FIVE_PROMPTS.get("comparison_prompt").format(
         user_query=user_message,
@@ -420,19 +452,60 @@ async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
         # اگر LLM فرمت را رعایت نکرد، کل متنش را به عنوان پاسخ برمی‌گردانیم
         return ChatResponse(message=final_response_text)
 
+
+async def get_product_detail(db, product, code_to_get_info):
+    sellers_context = await get_sellers_context(db, product.random_key)
     
+    try:
+
+        local_scope = {}
+        exec(code_to_get_info, globals(), local_scope)
+
+        calculator_func = local_scope.get('calculate')
+
+        if callable(calculator_func):
+    
+            result = calculator_func(sellers_context)
+            if result == None:
+                final_answer = None
+            else:
+                final_answer = str(result)
+            logger.info(f"-> Calculated result from dynamic code: {final_answer}")
+        else:
+            logger.error("-> 'calculate' function not found or not callable in LLM response.")
+            final_answer = code_to_get_info
+            raise HTTPException(status_code=500, detail="Internal error in processing the request.(calculate function error)")
+
+    except Exception as e:
+        logger.error(f"-> Error executing generated code: {e}", exc_info=True)
+        
+    if final_answer:
+        product_details = json.dumps({
+            "persian_name": product.persian_name,
+            "features": product.extra_features or {},
+            "sellers_info": final_answer
+        }, ensure_ascii=False, indent=2)
+        
+    else:
+        product_details = json.dumps({
+            "persian_name": product.persian_name,
+            "features": product.extra_features or {}
+        }, ensure_ascii=False, indent=2)
+    
+    return product_details
 
 async def find_two_product(user_message, db_session_factory):
     try:
         async with asyncio.TaskGroup() as tg:
             task1 = tg.create_task(find_p_in_fifth_scenario(user_message, 1, db_session_factory))
             task2 = tg.create_task(find_p_in_fifth_scenario(user_message, 2, db_session_factory))
-        
+            task3 = tg.create_task(get_calculate_code(user_message))
         
         first_product = task1.result()
         second_product = task2.result()
+        code_to_get_info = task3.result()
         
-        return (first_product, second_product)
+        return (first_product, second_product, code_to_get_info)
 
     except* Exception as eg:
         logger.error("An error occurred in one of the tasks. Details:")
@@ -495,6 +568,24 @@ async def find_p_in_fifth_scenario(user_message, index, db_session_factory)->str
         logger.info(f"product for index {index}: {str(product.persian_name)}")
         return product
 
+
+async def get_calculate_code(user_request):
+    system_prompt = SCENARIO_FIVE_PROMPTS.get("calculate_prompt", "").format(
+        user_query=user_request,
+    )
+    llm_response_code = await simple_openai_gpt_request(
+        message='',
+        systemprompt=system_prompt,
+        model="gpt-4.1",
+    )
+    if "```python" in llm_response_code:
+        llm_response_code = llm_response_code.split("```python")[1].split("```")[0].strip()
+
+    logger.info(f"-> Generated Python code from LLM:\n{llm_response_code}")
+    
+    
+    
+    
 async def find_exact_product_name_service(user_message: str, db: AsyncSession, essential_keywords: List[str], descriptive_keywords: List[str]) -> Optional[str]:
     product_names = await repository.search_products_by_keywords(
         db=db,
