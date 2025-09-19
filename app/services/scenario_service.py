@@ -375,8 +375,11 @@ async def find_two_product(user_message, db):
         second_product_key = task2.result()
 
         return (first_product_key, second_product_key)
-    except Exception as e:
-        logger.error(f"An error occurred in one of the tasks: {e}")
+    
+    except* Exception as eg:
+        logger.error("An error occurred in one of the tasks. Details:")
+        for exc in eg.exceptions:
+            logger.error(f"  - Exception: {exc}", exc_info=True)
         return (None, None)    
 
 async def find_p_in_fifth_scenario(user_message, index, db):
