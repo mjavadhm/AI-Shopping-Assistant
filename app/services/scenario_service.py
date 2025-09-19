@@ -361,15 +361,31 @@ async def scenario_three(request: ChatRequest, db: AsyncSession, found_key) -> C
     
 async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
+    logger.info("Initiating Scenario 5: Product Comparison.")
+
     product_data = await find_two_product(user_message, AsyncSessionLocal)
+
     if product_data is None:
         logger.error("Failed to retrieve data for one or both products in comparison.")
         raise HTTPException(status_code=500, detail="Could not process the comparison due to an internal error.")
 
-    first_product_features, first_product_name, second_product_features, second_product_name = product_data
-    
-    product_1_details = f"name : {first_product_name}\n\nfeatures : {first_product_features}"
-    product_2_details = f"name : {second_product_name}\n\nfeatures : {second_product_features}"
+    first_product, second_product = product_data
+
+    product_map = {
+        first_product.persian_name: first_product.random_key,
+        second_product.persian_name: second_product.random_key
+    }
+
+    product_1_details = json.dumps({
+        "persian_name": first_product.persian_name,
+        "features": first_product.extra_features or {}
+    }, ensure_ascii=False, indent=2)
+
+    product_2_details = json.dumps({
+        "persian_name": second_product.persian_name,
+        "features": second_product.extra_features or {}
+    }, ensure_ascii=False, indent=2)
+
 
     comparison_system_prompt = SCENARIO_FIVE_PROMPTS.get("comparison_prompt").format(
         user_query=user_message,
@@ -377,19 +393,32 @@ async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
         product_2_details=product_2_details
     )
 
-    logger.info("Sending final comparison prompt to LLM.")
-    logger.debug(f"Comparison Prompt: {comparison_system_prompt}")
-
-    final_comparison_response = await simple_openai_gpt_request(
+    final_response_text = await simple_openai_gpt_request(
         message="",
         systemprompt=comparison_system_prompt,
         model="gpt-4.1-mini"
     )
     
-    logger.info("Received comparison response from LLM.")
+    try:
+        json_part_str = final_response_text.split("```")[1].replace("json\n", "").strip()
+        text_explanation = final_response_text.split("```")[-1].strip()
 
-    # مرحله ۶: برگرداندن پاسخ نهایی به کاربر
-    return ChatResponse(message=final_comparison_response)
+        response_json = json.loads(json_part_str)
+        winning_name = response_json.get("winning_product_name")
+
+        winning_key = product_map.get(winning_name)
+        
+        logger.info(f"LLM selected winner: '{winning_name}' with key: {winning_key}")
+
+        return ChatResponse(
+            message=text_explanation,
+            base_random_keys=[winning_key] if winning_key else []
+        )
+
+    except (json.JSONDecodeError, IndexError) as e:
+        logger.error(f"Could not parse LLM response for comparison: {e}")
+        # اگر LLM فرمت را رعایت نکرد، کل متنش را به عنوان پاسخ برمی‌گردانیم
+        return ChatResponse(message=final_response_text)
 
     
 
@@ -400,10 +429,10 @@ async def find_two_product(user_message, db_session_factory):
             task2 = tg.create_task(find_p_in_fifth_scenario(user_message, 2, db_session_factory))
         
         
-        first_product_features, first_product_name = task1.result()
-        second_product_features, second_product_name = task2.result()
+        first_product = task1.result()
+        second_product = task2.result()
         
-        return (first_product_features, first_product_name, second_product_features, second_product_name)
+        return (first_product, second_product)
 
     except* Exception as eg:
         logger.error("An error occurred in one of the tasks. Details:")
@@ -459,13 +488,12 @@ async def find_p_in_fifth_scenario(user_message, index, db_session_factory)->str
         logger.info(f"cleaned name for index {index}:{p_name}")
         
         # از همان سشن 'db' برای کوئری‌های ریپازیتوری استفاده کنید
-        product_features = await repository.get_product_features_by_name(db=db, product_name=p_name)
-        if not product_features:
+        product = await repository.get_product_by_name_like(db=db, product_name=p_name)
+        if not product:
             logger.info("No matching product keys found. trying to search by like.")
-            product_features = await repository.get_product_features_by_name(db=db, product_name=p_name)            
-        logger.info(f"product_features for index {index}: {str(product_features)}")
-        product_features = str(product_features)
-        return product_features, p_name
+            product = await repository.get_product_by_name_like(db=db, product_name=p_name)            
+        logger.info(f"product for index {index}: {str(product.persian_name)}")
+        return product
 
 async def find_exact_product_name_service(user_message: str, db: AsyncSession, essential_keywords: List[str], descriptive_keywords: List[str]) -> Optional[str]:
     product_names = await repository.search_products_by_keywords(
