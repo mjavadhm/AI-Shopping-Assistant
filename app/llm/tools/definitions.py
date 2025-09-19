@@ -43,7 +43,7 @@ old_search_products_tool = {
 extract_search_keywords_tool = {
     "type": "function",
     "function": {
-        "name": "extract_search_keywords",
+        "name": "full_text_search_products_by_keywords",
         "description": "Extracts and structures keywords from a user's message, preparing them for a product search.",
         "parameters": {
             "type": "object",
@@ -64,7 +64,24 @@ extract_search_keywords_tool = {
     },
 }
 
-
+product_name_keywords_tool = {
+    "type": "function",
+    "function": {
+        "name": "extract_search_keywords",
+        "description": "Extracts single-word keywords that are highly likely to be part of the product's official name. use this if its in prompt or you need to search for products",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "product_name_keywords": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "A list of single-word keywords that are CERTAINLY part of the product's name. e.g., for 'گوشی سامسونگ S23', the output must be ['گوشی', 'سامسونگ', 'S23']."
+                }
+            },
+            "required": ["product_name_keywords"],
+        },
+    },
+}
 get_feature_tool = {
     "type": "function",
     "function": {
@@ -115,4 +132,13 @@ SECOND_SCENARIO_TOOLS = [
 FIRST_AGENT_TOOLS = [
     classify_request_tool,
     extract_search_keywords_tool,
+]
+
+EMBED_FIRST_AGENT_TOOLS = [
+    classify_request_tool,
+    product_name_keywords_tool,
+]
+
+EMBED_FIRST_SCENARIO_TOOLS = [
+    product_name_keywords_tool,
 ]
