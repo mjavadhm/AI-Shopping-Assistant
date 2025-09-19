@@ -68,14 +68,14 @@ product_name_keywords_tool = {
     "type": "function",
     "function": {
         "name": "extract_search_keywords",
-        "description": "Extracts single-word keywords that are highly likely to be part of the product's official name. Use this if the user is searching for a product.",
+        "description": "Extracts the single most differentiating keyword from a user's product search query.",
         "parameters": {
             "type": "object",
             "properties": {
                 "product_name_keywords": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "A list of 1 to 3 single-word keywords that are CERTAINLY part of the product's name. Prioritize keywords in this order: 1) Unique codes/model numbers, 2) Core product noun. For example, for 'فرش سه بعدی با کد ۸۱۰۱', the output must be ['فرش', '۸۱۰۱']."
+                    "description": "A list containing exactly ONE keyword that is the most unique identifier for a product. Prioritize codes or model numbers first. For example, for 'فرش نقشه برکه با کد ۸۱۰۱', the output must be ['۸۱۰۱']."
                 }
             },
             "required": ["product_name_keywords"]
