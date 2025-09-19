@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional, Tuple 
@@ -8,7 +9,7 @@ import json
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.openai_service import simple_openai_gpt_request, simple_openai_gpt_request_with_tools
 from app.llm.prompts import (FIND_PRODUCT_PROMPTS, FIRST_AGENT_PROMPT, ROUTER_PROMPT, 
-    SCENARIO_THREE_PROMPTS, SCENARIO_TWO_PROMPTS, SELECT_BEST_MATCH_PROMPT, OLD_FIND_PRODUCT_PROMPTS)
+    SCENARIO_THREE_PROMPTS, SCENARIO_TWO_PROMPTS, SELECT_BEST_MATCH_PROMPT, OLD_FIND_PRODUCT_PROMPTS, SCENARIO_FIVE_PROMPTS)
 from app.db.session import get_db
 from app.llm.tools.definitions import FIRST_AGENT_TOOLS, FIRST_SCENARIO_TOOLS, OLD_FIRST_SCENARIO_TOOLS, EMBED_FIRST_AGENT_TOOLS
 from app.llm.tools.handler import ToolHandler
@@ -44,24 +45,32 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
             response = ChatResponse(member_random_keys=[key])
 
         else:
+            
+            #with full text search
             # scenario, essential_keywords, descriptive_keywords = await classify_scenario(request)
             
             # logger.info(f"CLASSIFIED SCENARIO: {scenario}, ESSENTIAL: {essential_keywords}, DESCRIPTIVE: {descriptive_keywords}")
             # found_key = await find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db, essential_keywords=essential_keywords, descriptive_keywords=descriptive_keywords)
             # if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
             #     raise HTTPException(status_code=404, detail="No products found matching the keywords.")
-            # scenario = await old_classify_scenario(request)
-            # logger.info(f"CLASSIFIED SCENARIO: {scenario}")
-            # found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
-            # logger.info(f"found_key: {found_key}")
-            keywords = []
-            scenario, keywords = await classify_scenario_for_embed(request)
-            logger.info(f"CLASSIFIED SCENARIO: {scenario}, KEYWORDS: {keywords}")
-            if scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
-                found_key = await find_exact_product_name_service_and_embed(user_message = request.messages[-1].content.strip(), keywords=keywords)
-            if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
-                raise HTTPException(status_code=404, detail="No products found matching the keywords.")
-            return ChatResponse(base_random_keys=[found_key])
+            #------------------------------------------
+            #with keyword simple
+            scenario = await old_classify_scenario(request)
+            logger.info(f"CLASSIFIED SCENARIO: {scenario}")
+            found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
+            logger.info(f"found_key: {found_key}")
+            #-----------------------------------------------------
+            #with embed
+            #---------------------------------------------
+            # keywords = []
+            # scenario, keywords = await classify_scenario_for_embed(request)
+            # logger.info(f"CLASSIFIED SCENARIO: {scenario}, KEYWORDS: {keywords}")
+            # if scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
+            #     found_key = await find_exact_product_name_service_and_embed(user_message = request.messages[-1].content.strip(), keywords=keywords)
+            # if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
+            #     raise HTTPException(status_code=404, detail="No products found matching the keywords.")
+            
+            
             # return ChatResponse(base_random_keys=[found_key])
             if scenario == "SCENARIO_1_DIRECT_SEARCH":
                 return ChatResponse(base_random_keys=[found_key]) 
@@ -70,6 +79,10 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
                 response = await scenario_two(request, db=db, found_key=found_key)
             elif scenario == "SCENARIO_3_SELLER_INFO":
                 response = await scenario_three(request, db=db, found_key=found_key)
+            # elif scenario == "SCENARIO_4_CONVERSATIONAL_SEARCH":
+            #     response = await scenario_three(request, db=db, found_key=found_key)
+            elif scenario == "SCENARIO_5_COMPARISON":
+                response = await scenario_five(request, db=db, found_key=found_key)
         return response
     except Exception as e:
         logger.error(e,exc_info=True)
@@ -341,6 +354,66 @@ async def scenario_three(request: ChatRequest, db: AsyncSession, found_key) -> C
     
 #     return ChatResponse(message=final_answer)
     
+    
+    
+async def scenario_five(request: ChatRequest, db: AsyncSession, found_key) -> ChatResponse:
+    user_message = request.messages[-1].content.strip()
+    first_product_key, second_product_key = await find_two_product(user_message,db)
+    logger.info(f"{first_product_key}    {second_product_key}")
+
+    
+
+async def find_two_product(user_message, db):
+    try:
+        async with asyncio.TaskGroup() as tg:
+            task1 = tg.create_task(find_p_in_fifth_scenario(user_message, 1, db))
+            task2 = tg.create_task(find_p_in_fifth_scenario(user_message, 2, db))
+        
+        first_product_key = task1.result()
+        second_product_key = task2.result()
+
+        return (first_product_key, second_product_key)
+    except Exception as e:
+        logger.error(f"An error occurred in one of the tasks: {e}")
+        return (None, None)    
+
+async def find_p_in_fifth_scenario(user_message, index, db):
+    if index == 1:
+        index_str = 'first'
+    elif index == 2:
+        index_str = 'second'
+    else:
+        raise "index should be 1 or 2"
+    
+    system_prompt = SCENARIO_FIVE_PROMPTS.get("find_p_prompt", "").format(
+        index_str = index_str,
+    )
+    tool_handler = ToolHandler(db=db)
+    tools_answer = []
+    for _ in range(6):
+        if tool_calls:
+            tools_answer = await tool_handler.handle_tool_call(tool_calls, tools_answer)
+            
+            llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
+                message=user_message,
+                systemprompt=system_prompt,
+                model="gpt-4.1-mini",
+                tools=OLD_FIRST_SCENARIO_TOOLS,
+                tools_answer=tools_answer
+            )
+        else:
+            break
+    
+    logger.info(f"llm_response: {llm_response}")
+    p_name = llm_response.split('\n')[0]
+    p_name = p_name.strip()
+    logger.info(f"cleaned name:{p_name}")
+    found_keys = await repository.search_product_by_name(db=db, product_name=p_name)
+    if not found_keys:
+        logger.info("No matching product keys found.trying to search by like.")
+        found_keys = await repository.get_product_rkey_by_name_like(db=db, product_name=p_name)
+    logger.info(f"found_keys: {found_keys}")
+    return found_keys[0] if found_keys else None
 
 async def find_exact_product_name_service(user_message: str, db: AsyncSession, essential_keywords: List[str], descriptive_keywords: List[str]) -> Optional[str]:
     product_names = await repository.search_products_by_keywords(
