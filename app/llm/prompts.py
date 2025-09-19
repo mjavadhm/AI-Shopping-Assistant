@@ -8,7 +8,7 @@ Your single objective is to determine which scenario the user's latest message c
 ### SCENARIO DEFINITIONS ###
 Here are the possible scenarios you need to classify the request into:
 
-* **SCENARIO_1_DIRECT_SEARCH**: The user is looking for a specific product that can be directly mapped to a single item in the database. The query is precise and contains a full product name, model, or code.
+* **SCENARIO_1_DIRECT_SEARCH**: The user is looking for a specific product. The query might contain alternatives but ultimately describes a single desired item.
     * *Keywords*: "میخوام", "نیاز دارم", "تهیه کنید", specific model numbers.
 
 * **SCENARIO_2_FEATURE_EXTRACTION**: The user is asking for a specific attribute or feature of a known product.
@@ -17,8 +17,8 @@ Here are the possible scenarios you need to classify the request into:
 * **SCENARIO_3_SELLER_INFO**: The user's question is about the sellers of a specific product, such as the price, warranty, or location.
     * *Keywords*: "کمترین قیمت", "کدوم فروشگاه", "ارزان‌ترین", "گارانتی دارد؟".
 
-* **SCENARIO_5_COMPARISON**: The user wants to compare two or more specific products. The query explicitly mentions multiple product names.
-    * *Keywords*: "کدام یک", "مقایسه", "بهتر است؟", "یا".
+* **SCENARIO_5_COMPARISON**: The user wants to compare **two or more distinct, specific products** against each other. The query explicitly mentions multiple, separate product names to be evaluated side-by-side.
+    * *Keywords*: "کدام یک", "مقایسه", "بهتر است؟", "بین این دو".
 
 ### RULES & CONSTRAINTS ###
 1.  **Output Format**: Your output MUST be ONLY the scenario name (e.g., `SCENARIO_1_DIRECT_SEARCH`). Do NOT add any explanations or introductory text.

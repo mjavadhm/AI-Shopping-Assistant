@@ -188,7 +188,7 @@ async def old_classify_scenario(request: ChatRequest) -> str:
         llm_response = await simple_openai_gpt_request(
             message=last_message,
             systemprompt=system_prompt,
-            model="gpt-4.1-nano",
+            model="gpt-4.1-mini",
                     
         )
 
