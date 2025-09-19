@@ -361,17 +361,35 @@ async def scenario_three(request: ChatRequest, db: AsyncSession, found_key) -> C
     
 async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
-    result = await find_two_product(user_message, AsyncSessionLocal)
+    product_data = await find_two_product(user_message, AsyncSessionLocal)
+    if product_data is None:
+        logger.error("Failed to retrieve data for one or both products in comparison.")
+        raise HTTPException(status_code=500, detail="Could not process the comparison due to an internal error.")
 
-    if result is None:
-        raise HTTPException(status_code=500, detail="Failed to process product comparison.")
+    first_product_features, first_product_name, second_product_features, second_product_name = product_data
+    
+    product_1_details = f"name : {first_product_name}\n\nfeatures : {first_product_features}"
+    product_2_details = f"name : {second_product_name}\n\nfeatures : {second_product_features}"
 
-    first_product_key, second_product_key = result
-    logger.info(f"Found product keys: {first_product_key}, {second_product_key}")
-
-    return ChatResponse(
-        message=f"Product 1 key: {first_product_key}\nProduct 2 key: {second_product_key}"
+    comparison_system_prompt = SCENARIO_FIVE_PROMPTS.get("comparison_prompt").format(
+        user_query=user_message,
+        product_1_details=product_1_details,
+        product_2_details=product_2_details
     )
+
+    logger.info("Sending final comparison prompt to LLM.")
+    logger.debug(f"Comparison Prompt: {comparison_system_prompt}")
+
+    final_comparison_response = await simple_openai_gpt_request(
+        message="",
+        systemprompt=comparison_system_prompt,
+        model="gpt-4.1-mini"
+    )
+    
+    logger.info("Received comparison response from LLM.")
+
+    # مرحله ۶: برگرداندن پاسخ نهایی به کاربر
+    return ChatResponse(message=final_comparison_response)
 
     
 
@@ -381,14 +399,17 @@ async def find_two_product(user_message, db_session_factory):
             task1 = tg.create_task(find_p_in_fifth_scenario(user_message, 1, db_session_factory))
             task2 = tg.create_task(find_p_in_fifth_scenario(user_message, 2, db_session_factory))
         
-        first_product_features = task1.result()
-        second_product_features = task2.result()
+        
+        first_product_features, first_product_name = task1.result()
+        second_product_features, second_product_name = task2.result()
+        
+        return (first_product_features, first_product_name, second_product_features, second_product_name)
 
-        return (first_product_features, second_product_features)
     except* Exception as eg:
         logger.error("An error occurred in one of the tasks. Details:")
         for exc in eg.exceptions:
             logger.error(f"  - Exception: {exc}", exc_info=True)
+
 
 async def find_p_in_fifth_scenario(user_message, index, db_session_factory)->str:
     async with db_session_factory() as db:
@@ -443,7 +464,7 @@ async def find_p_in_fifth_scenario(user_message, index, db_session_factory)->str
             logger.info("No matching product keys found. trying to search by like.")
             product_features = await repository.get_product_features_by_name(db=db, product_name=p_name)            
         logger.info(f"product_features for index {index}: {str(product_features)}")
-        return str(product_features) if product_features else None
+        return str(product_features), p_name if product_features else None, p_name
 
 
 async def find_exact_product_name_service(user_message: str, db: AsyncSession, essential_keywords: List[str], descriptive_keywords: List[str]) -> Optional[str]:
