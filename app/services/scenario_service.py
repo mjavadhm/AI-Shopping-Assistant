@@ -381,16 +381,16 @@ async def find_two_product(user_message, db_session_factory):
             task1 = tg.create_task(find_p_in_fifth_scenario(user_message, 1, db_session_factory))
             task2 = tg.create_task(find_p_in_fifth_scenario(user_message, 2, db_session_factory))
         
-        first_product_key = task1.result()
-        second_product_key = task2.result()
+        first_product_features = task1.result()
+        second_product_features = task2.result()
 
-        return (first_product_key, second_product_key)
+        return (first_product_features, second_product_features)
     except* Exception as eg:
         logger.error("An error occurred in one of the tasks. Details:")
         for exc in eg.exceptions:
             logger.error(f"  - Exception: {exc}", exc_info=True)
 
-async def find_p_in_fifth_scenario(user_message, index, db_session_factory):
+async def find_p_in_fifth_scenario(user_message, index, db_session_factory)->str:
     async with db_session_factory() as db:
         if index == 1:
             index_str = 'first'
@@ -438,13 +438,12 @@ async def find_p_in_fifth_scenario(user_message, index, db_session_factory):
         logger.info(f"cleaned name for index {index}:{p_name}")
         
         # از همان سشن 'db' برای کوئری‌های ریپازیتوری استفاده کنید
-        found_keys = await repository.search_product_by_name(db=db, product_name=p_name)
-        if not found_keys:
+        product_features = await repository.get_product_features_by_name(db=db, product_name=p_name)
+        if not product_features:
             logger.info("No matching product keys found. trying to search by like.")
-            found_keys = await repository.get_product_rkey_by_name_like(db=db, product_name=p_name)
-            
-        logger.info(f"found_keys for index {index}: {found_keys}")
-        return found_keys[0] if found_keys else None
+            product_features = await repository.get_product_features_by_name(db=db, product_name=p_name)            
+        logger.info(f"product_features for index {index}: {str(product_features)}")
+        return str(product_features) if product_features else None
 
 
 async def find_exact_product_name_service(user_message: str, db: AsyncSession, essential_keywords: List[str], descriptive_keywords: List[str]) -> Optional[str]:
