@@ -11,3 +11,4 @@ httpx
 openai
 requests
 asyncpg
+aiohttp
