@@ -68,19 +68,19 @@ product_name_keywords_tool = {
     "type": "function",
     "function": {
         "name": "extract_search_keywords",
-        "description": "Extracts single-word keywords that are highly likely to be part of the product's official name. use this if its in prompt or you need to search for products",
+        "description": "Extracts the single most differentiating keyword from a user's product search query. This follows a strict priority: code first, then proper name.",
         "parameters": {
             "type": "object",
             "properties": {
                 "product_name_keywords": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "A list of single-word keywords that are CERTAINLY part of the product's name. e.g., for 'گوشی سامسونگ S23', the output must be ['گوشی', 'سامسونگ', 'S23']."
+                    "description": "A list with ONE keyword. Follow this priority: 1st, isolate a unique code/model number. 2nd, if NO code exists, isolate the unique proper name (e.g., a design name, color, material). For 'فرش ماشینی طرح افشان زمینه آبی', the output MUST be ['افشان']."
                 }
             },
-            "required": ["product_name_keywords"],
-        },
-    },
+            "required": ["required"]
+        }
+    }
 }
 get_feature_tool = {
     "type": "function",
