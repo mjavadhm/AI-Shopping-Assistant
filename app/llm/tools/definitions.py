@@ -68,23 +68,19 @@ product_name_keywords_tool = {
     "type": "function",
     "function": {
         "name": "extract_search_keywords",
-        "description": "Extracts key product information from a user's query for a two-stage search: precise filtering and semantic context.",
+        "description": "Extracts single-word keywords that are highly likely to be part of the product's official name. use this if its in prompt or you need to search for products",
         "parameters": {
             "type": "object",
             "properties": {
                 "product_name_keywords": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "A list with ONLY ONE keyword that is the most unique identifier. Priority: 1st, a code/model number. 2nd, if no code, a proper name (e.g., design name)."
-                },
-                "product_general_name": {
-                    "type": "string",
-                    "description": "The general name/category of the product, used for semantic context. For 'قیمت خردکن سیلور کرست مدل NF-1923', this would be 'خردکن سیلور کرست'."
+                    "description": "A list of single-word keywords that are CERTAINLY part of the product's name. e.g., for 'گوشی سامسونگ S23', the output must be ['گوشی', 'سامسونگ', 'S23']."
                 }
             },
-            "required": ["product_name_keywords", "product_general_name"]
-        }
-    }
+            "required": ["product_name_keywords"],
+        },
+    },
 }
 get_feature_tool = {
     "type": "function",

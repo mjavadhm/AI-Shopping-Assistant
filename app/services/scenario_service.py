@@ -55,10 +55,10 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
             # found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
             # logger.info(f"found_key: {found_key}")
             keywords = []
-            scenario, keywords, product_general_name = await classify_scenario_for_embed(request)
+            scenario, keywords = await classify_scenario_for_embed(request)
             logger.info(f"CLASSIFIED SCENARIO: {scenario}, KEYWORDS: {keywords}")
             if scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
-                found_key = await find_exact_product_name_service_and_embed(user_message = request.messages[-1].content.strip(), keywords=keywords, product_general_name=product_general_name)
+                found_key = await find_exact_product_name_service_and_embed(user_message = request.messages[-1].content.strip(), keywords=keywords)
             if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
                 raise HTTPException(status_code=404, detail="No products found matching the keywords.")
             return ChatResponse(base_random_keys=[found_key])
@@ -75,7 +75,7 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
         logger.error(e,exc_info=True)
 
 
-async def classify_scenario_for_embed(request: ChatRequest) -> Tuple[str, List[str], str]:
+async def classify_scenario_for_embed(request: ChatRequest) -> Tuple[str, List[str]]:
     """
     Classifies the user's request into a scenario and extracts keywords using tool calls.
     """
@@ -105,12 +105,11 @@ async def classify_scenario_for_embed(request: ChatRequest) -> Tuple[str, List[s
                     scenario = parsed_args.get("scenario", "UNCATEGORIZED")
                 elif tool_call.function.name == "extract_search_keywords":
                     keywords = parsed_args.get("product_name_keywords", [])
-                    product_general_name = parsed_args.get("product_general_name", "")
 
             except json.JSONDecodeError:
                 logger.error(f"Failed to parse arguments for tool {tool_call.function.name}")
 
-        return scenario, keywords, product_general_name
+        return scenario, keywords
         
     except Exception as e:
         logger.error(e, exc_info=True)
@@ -428,8 +427,8 @@ async def old_find_exact_product_name_service(user_message: str, db: AsyncSessio
     return found_keys[0] if found_keys else None
 
 
-async def find_exact_product_name_service_and_embed(user_message: str, keywords: List[str], product_general_name: str) -> str:
-    product_names = await search_embed(product_general_name, keywords)
+async def find_exact_product_name_service_and_embed(user_message: str, keywords) -> str:
+    product_names = await search_embed(user_message, keywords)
     if not product_names:
         product_names =  "have not found anything"
     
@@ -453,8 +452,7 @@ async def find_exact_product_name_service_and_embed(user_message: str, keywords:
                 function_arguments = tool_call.function.arguments
                 function_name = tool_call.function.name
                 keywords = function_arguments.get("product_name_keywords")
-                product_general_name = function_arguments.get("product_general_name")
-                result = await search_embed(user_message, product_general_name)
+                result = await search_embed(user_message, keywords)
                 tools_answer.append({"role": "assistant", "tool_calls": [{"id": tool_call.id, "type": "function", "function": {"name": function_name, "arguments": function_arguments}}]})
                 tools_answer.append({"role": "tool", "tool_call_id": tool_call.id, "content": result})
             llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
