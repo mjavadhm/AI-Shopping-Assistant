@@ -68,17 +68,21 @@ product_name_keywords_tool = {
     "type": "function",
     "function": {
         "name": "extract_search_keywords",
-        "description": "Extracts the single most differentiating keyword from a user's product search query. This follows a strict priority: code first, then proper name.",
+        "description": "Extracts key product information from a user's query for a two-stage search: precise filtering and semantic context.",
         "parameters": {
             "type": "object",
             "properties": {
                 "product_name_keywords": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "A list with ONE keyword. Follow this priority: 1st, isolate a unique code/model number. 2nd, if NO code exists, isolate the unique proper name (e.g., a design name). For 'فرش ماشینی طرح افشان زمینه آبی', the output MUST be ['افشان']."
+                    "description": "A list with ONLY ONE keyword that is the most unique identifier. Priority: 1st, a code/model number. 2nd, if no code, a proper name (e.g., design name)."
+                },
+                "product_general_name": {
+                    "type": "string",
+                    "description": "The general name/category of the product, used for semantic context. For 'قیمت خردکن سیلور کرست مدل NF-1923', this would be 'خردکن سیلور کرست'."
                 }
             },
-            "required": ["required"]
+            "required": ["product_name_keywords", "product_general_name"]
         }
     }
 }
