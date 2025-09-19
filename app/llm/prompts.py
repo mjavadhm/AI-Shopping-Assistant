@@ -547,7 +547,7 @@ You are an expert Data Analyst and Python Coder. Your task is to analyze the use
 4.  **IMPORTANT**: If the user's question is about product features (e.g., "which is heavier?", "which one is more beautiful?") and has NO RELATION to seller data (price, city, count, etc.), you MUST generate a function that simply returns `None`.
 
 ### DATA STRUCTURE ###
-The function will receive data with this structure: `[{"price": int, "city": str, "shop_score": float, "has_warranty": bool}, ...]`.
+The function will receive data with this structure: `[{{"price": int, "city": str, "shop_score": float, "has_warranty": bool}}, ...]`.
 
 ### EXAMPLES ###
 
@@ -556,7 +556,7 @@ The function will receive data with this structure: `[{"price": int, "city": str
 ```python
 def calculate(data):
     count = len(data)
-    return f"تعداد فروشندگان: {count}"
+    return f"تعداد فروشندگان: {{count}}"
 ````
 
 **User Question:** "کدام محصول سنگین تر است؟"
@@ -576,7 +576,7 @@ def calculate(data):
     if not ahvaz_prices:
         return "فروشنده‌ای در اهواز ندارد"
     min_price = min(ahvaz_prices)
-    return f"ارزان‌ترین قیمت در اهواز: {min_price}"
+    return f"ارزان‌ترین قیمت در اهواز: {{min_price}}"
 ```
 
 ### YOUR TASK
