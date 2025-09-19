@@ -464,8 +464,8 @@ async def find_p_in_fifth_scenario(user_message, index, db_session_factory)->str
             logger.info("No matching product keys found. trying to search by like.")
             product_features = await repository.get_product_features_by_name(db=db, product_name=p_name)            
         logger.info(f"product_features for index {index}: {str(product_features)}")
-        return str(product_features), p_name if product_features else None, p_name
-
+        product_features = str(product_features)
+        return product_features, p_name
 
 async def find_exact_product_name_service(user_message: str, db: AsyncSession, essential_keywords: List[str], descriptive_keywords: List[str]) -> Optional[str]:
     product_names = await repository.search_products_by_keywords(
