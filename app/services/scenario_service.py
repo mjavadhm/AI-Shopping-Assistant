@@ -380,7 +380,7 @@ async def find_two_product(user_message, db):
         logger.error("An error occurred in one of the tasks. Details:")
         for exc in eg.exceptions:
             logger.error(f"  - Exception: {exc}", exc_info=True)
-        return (None, None)    
+        # return (None, None)    
 
 async def find_p_in_fifth_scenario(user_message, index, db):
     if index == 1:
