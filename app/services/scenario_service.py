@@ -739,7 +739,7 @@ async def get_embedding_vector(text_query: str) -> Optional[List[float]]:
     """
     logger.info(f"Requesting embedding for text: '{text_query}'")
     payload = {"text": text_query}
-    response = await post_async_request("http://89.169.32.124/:2256/embed", payload)
+    response = await post_async_request("http://89.169.32.124:2256/embed", payload)
 
     if response and "embedding" in response:
         logger.info("✅ Embedding vector successfully received.")
