@@ -10,6 +10,8 @@ from app.core.json_logger import log_request_response
 from .services.scenario_service import check_scenario_one
 from .db.session import get_db 
 from .services import openai_service
+from app.core.context import scenario_context
+
 app = FastAPI()
 
 @app.middleware("http")
@@ -44,7 +46,8 @@ async def json_logging_middleware(request: Request, call_next):
     log_data = {
         "request": request_body_json,
         "response": response_body_json,
-        "openai_cost": openai_service.current_request_cost
+        "openai_cost": openai_service.current_request_cost,
+        "scenario": scenario_context.get()
     }
 
     task = BackgroundTask(log_request_response, log_data=log_data)

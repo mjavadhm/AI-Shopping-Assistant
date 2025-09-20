@@ -19,6 +19,7 @@ from app.core.http_client import post_async_request
 from app.core.utils import parse_llm_response_to_number
 from app.db import repository
 from app.core.logger import logger
+from app.core.context import scenario_context
 
 
 async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
@@ -33,7 +34,7 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
     try:
         last_message = request.messages[-1].content.strip()
         response = None
-
+        scenario = "SANITY_CHECK"
         # --- Scenario Zero: Sanity Checks ---
         if last_message == "ping":
             response = ChatResponse(message="pong")
@@ -76,6 +77,7 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
             
             
             # return ChatResponse(base_random_keys=[found_key])
+            scenario_context.set(scenario)
             if scenario == "SCENARIO_1_DIRECT_SEARCH":
                 return ChatResponse(base_random_keys=[found_key]) 
                 # response = await scenario_one(request, db=db, essential_keywords=essential_keywords, descriptive_keywords=descriptive_keywords)
