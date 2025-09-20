@@ -579,13 +579,10 @@ async def find_random_keys(user_message, db_session_factory)->str:
 
         system_prompt = SCENARIO_FIVE_PROMPTS.get("find_random_keys", "")
         
-        tool_handler = ToolHandler(db=db)
-        tools_answer = []
-
-        llm_response, tool_calls = await simple_openai_gpt_request(
+        llm_response = await simple_openai_gpt_request(
             message=user_message,
             systemprompt=system_prompt,
-            model="gpt-4.1-mini",
+            model="gpt-4.1-mini"
         )
 
         if "```json" in llm_response:
