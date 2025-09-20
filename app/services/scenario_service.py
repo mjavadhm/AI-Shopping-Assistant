@@ -498,15 +498,15 @@ async def get_product_detail(db, product, code_to_get_info):
 async def find_two_product(user_message, db_session_factory):
     try:
         async with asyncio.TaskGroup() as tg:
-            # task1 = tg.create_task(find_p_in_fifth_scenario(user_message, 1, db_session_factory))
-            # task2 = tg.create_task(find_p_in_fifth_scenario(user_message, 2, db_session_factory))
-            task1 = tg.create_task(find_random_keys(user_message, db_session_factory))
+            task1 = tg.create_task(find_p_in_fifth_scenario(user_message, 1, db_session_factory))
+            task2 = tg.create_task(find_p_in_fifth_scenario(user_message, 2, db_session_factory))
+            # task1 = tg.create_task(find_random_keys(user_message, db_session_factory))
             
             task3 = tg.create_task(get_calculate_code(user_message))
         
-        # first_product = task1.result()
-        # second_product = task2.result()
-        first_product, second_product = task1.result()
+        first_product = task1.result()
+        second_product = task2.result()
+        # first_product, second_product = task1.result()
         
         code_to_get_info = task3.result()
         
