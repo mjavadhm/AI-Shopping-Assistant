@@ -733,13 +733,20 @@ async def search_embed(user_query, keywords):
     }
     logger.info(f"sending to semantic search: query:{user_query}\nkeywords:{keywords}\n")
     
-    response = await post_async_request(url,payload)
-    results = await response.json()
-    logger.info(f"result:{json.dumps(results, ensure_ascii=False).encode('utf-8')}")
-    for item in results:
-        del item['score']
-    return json.dumps(results, ensure_ascii=False)
+    results = await post_async_request(url, payload)
 
+    if results is None:
+        logger.error("❌ No results received from post_async_request.")
+        return "❌ No results received from post_async_request."
+
+    logger.info(f"result:{json.dumps(results, ensure_ascii=False).encode('utf-8')}")
+    
+    if isinstance(results, list):
+        for item in results:
+            if 'score' in item:
+                del item['score']
+    
+    return json.dumps(results, ensure_ascii=False)
 # async def get_embedding_vector(text_query: str) -> Optional[List[float]]:
 #     """
 #     متن را به سرور امبدینگ فرستاده و وکتور امبدینگ را دریافت می‌کند.
