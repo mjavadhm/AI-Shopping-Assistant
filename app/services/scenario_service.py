@@ -678,9 +678,9 @@ async def find_exact_product_name_service_and_embed(user_message: str, keywords)
         if not product_names:
             product_names =  "have not found anything"
         
-        if len(product_names) > 100:
-            logger.warning(f"""Too many results ({len(product_names)})""")
-            product_names = f"Too many results ({len(product_names)})"
+        # if len(product_names) > 100:
+        #     logger.warning(f"""Too many results ({len(product_names)})""")
+        #     product_names = f"Too many results ({len(product_names)})"
     else:
         product_names = "use function to search"
     system_prompt = SELECT_BEST_MATCH_PROMPT.get("new_main_prompt_template_embed", "").format(
@@ -703,9 +703,8 @@ async def find_exact_product_name_service_and_embed(user_message: str, keywords)
                 logger.info(f"function_name = {function_name}\nfunction_arguments: {str(function_arguments)}")
                 keywords = parsed_arguments.get("product_name_keywords")
                 result = await search_embed(user_message, keywords)
-                result_string = json.dumps(result, ensure_ascii=False)
                 tools_answer.append({"role": "assistant", "tool_calls": [{"id": tool_call.id, "type": "function", "function": {"name": function_name, "arguments": function_arguments}}]})
-                tools_answer.append({"role": "tool", "tool_call_id": tool_call.id, "content": result_string})
+                tools_answer.append({"role": "tool", "tool_call_id": tool_call.id, "content": result})
             llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
                 message=user_message,
                 systemprompt=system_prompt,
@@ -739,7 +738,7 @@ async def search_embed(user_query, keywords):
         logger.error("❌ No results received from post_async_request.")
         return "❌ No results received from post_async_request."
 
-    logger.info(f"result:{json.dumps(results, ensure_ascii=False).encode('utf-8')}")
+    logger.info(f"result:{json.dumps(results, ensure_ascii=False)}")
     
     if isinstance(results, list):
         for item in results:
