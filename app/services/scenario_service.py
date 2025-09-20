@@ -526,50 +526,53 @@ async def find_p_in_fifth_scenario(user_message, index, db_session_factory)->str
             index_str = 'second'
         else:
             raise ValueError("index should be 1 or 2")
-
-        system_prompt = SCENARIO_FIVE_PROMPTS.get("find_p_prompt", "").format(
-            index_str=index_str,
-        )
+        user_message = f"find the {index_str} product in this compare request:\n\n{user_message}"
+        found_key = await find_exact_product_name_service_and_embed(user_message, None)
+        product = await repository.get_product_by_random_key(db=db, random_key=found_key)
         
-        tool_handler = ToolHandler(db=db)
-        tools_answer = []
+        # system_prompt = SCENARIO_FIVE_PROMPTS.get("find_p_prompt", "").format(
+        #     index_str=index_str,
+        # )
+        
+        # tool_handler = ToolHandler(db=db)
+        # tools_answer = []
 
-        llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
-            message=user_message,
-            systemprompt=system_prompt,
-            model="gpt-4.1-mini",
-            tools=OLD_FIRST_SCENARIO_TOOLS,
-            tools_answer=None
-        )
+        # llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
+        #     message=user_message,
+        #     systemprompt=system_prompt,
+        #     model="gpt-4.1-mini",
+        #     tools=OLD_FIRST_SCENARIO_TOOLS,
+        #     tools_answer=None
+        # )
 
-        for _ in range(5):
-            if tool_calls:
-                tools_answer = await tool_handler.handle_tool_call(tool_calls, tools_answer)
+        # for _ in range(5):
+        #     if tool_calls:
+        #         tools_answer = await tool_handler.handle_tool_call(tool_calls, tools_answer)
                 
-                llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
-                    message=user_message,
-                    systemprompt=system_prompt,
-                    model="gpt-4.1-mini",
-                    tools=OLD_FIRST_SCENARIO_TOOLS,
-                    tools_answer=tools_answer
-                )
-            else:
-                break
+        #         llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
+        #             message=user_message,
+        #             systemprompt=system_prompt,
+        #             model="gpt-4.1-mini",
+        #             tools=OLD_FIRST_SCENARIO_TOOLS,
+        #             tools_answer=tools_answer
+        #         )
+        #     else:
+        #         break
         
-        logger.info(f"llm_response for index {index}: {llm_response}")
+        # logger.info(f"llm_response for index {index}: {llm_response}")
         
-        if not llm_response:
-            logger.warning(f"LLM did not return a response for index {index}.")
-            return None
+        # if not llm_response:
+        #     logger.warning(f"LLM did not return a response for index {index}.")
+        #     return None
             
-        p_name = llm_response.split('\n')[0].strip()
-        logger.info(f"cleaned name for index {index}:{p_name}")
+        # p_name = llm_response.split('\n')[0].strip()
+        # logger.info(f"cleaned name for index {index}:{p_name}")
         
         # از همان سشن 'db' برای کوئری‌های ریپازیتوری استفاده کنید
-        product = await repository.get_product_by_name_like(db=db, product_name=p_name)
-        if not product:
-            logger.info("No matching product keys found. trying to search by like.")
-            product = await repository.get_product_by_name_like(db=db, product_name=p_name)            
+        # product = await repository.get_product_by_name_like(db=db, product_name=p_name)
+        # if not product:
+        #     logger.info("No matching product keys found. trying to search by like.")
+        #     product = await repository.get_product_by_name_like(db=db, product_name=p_name)            
         logger.info(f"product for index {index}: {str(product.persian_name)}")
         return product
     
