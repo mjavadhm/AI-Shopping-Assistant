@@ -695,8 +695,9 @@ async def find_exact_product_name_service_and_embed(user_message: str, keywords)
             for tool_call in tool_calls:
                 function_arguments = tool_call.function.arguments
                 function_name = tool_call.function.name
+                parsed_arguments = json.loads(function_arguments)
                 logger.info(f"function_name = {function_name}\nfunction_arguments: {str(function_arguments)}")
-                keywords = function_arguments.get("product_name_keywords")
+                keywords = parsed_arguments.get("product_name_keywords")
                 result = await search_with_text(user_message, keywords)
                 tools_answer.append({"role": "assistant", "tool_calls": [{"id": tool_call.id, "type": "function", "function": {"name": function_name, "arguments": function_arguments}}]})
                 tools_answer.append({"role": "tool", "tool_call_id": tool_call.id, "content": result})
