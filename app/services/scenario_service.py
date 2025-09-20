@@ -56,22 +56,22 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
             #     raise HTTPException(status_code=404, detail="No products found matching the keywords.")
             #------------------------------------------
             #with keyword simple
-            scenario = await old_classify_scenario(request)
-            logger.info(f"CLASSIFIED SCENARIO: {scenario}")
-            if scenario != "SCENARIO_5_COMPARISON":
+            # scenario = await old_classify_scenario(request)
+            # logger.info(f"CLASSIFIED SCENARIO: {scenario}")
+            # if scenario != "SCENARIO_5_COMPARISON":
                 
-                found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
-                logger.info(f"found_key: {found_key}")
+            #     found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
+            #     logger.info(f"found_key: {found_key}")
             #-----------------------------------------------------
             #with embed
             #---------------------------------------------
-            # keywords = []
-            # scenario, keywords = await classify_scenario_for_embed(request)
-            # logger.info(f"CLASSIFIED SCENARIO: {scenario}, KEYWORDS: {keywords}")
-            # if scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
-            #     found_key = await find_exact_product_name_service_and_embed(user_message = request.messages[-1].content.strip(), keywords=keywords)
-            # if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
-            #     raise HTTPException(status_code=404, detail="No products found matching the keywords.")
+            keywords = []
+            scenario, keywords = await classify_scenario_for_embed(request)
+            logger.info(f"CLASSIFIED SCENARIO: {scenario}, KEYWORDS: {keywords}")
+            if scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
+                found_key = await find_exact_product_name_service_and_embed(user_message = request.messages[-1].content.strip(), keywords=keywords)
+            if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
+                raise HTTPException(status_code=404, detail="No products found matching the keywords.")
             
             
             # return ChatResponse(base_random_keys=[found_key])
@@ -672,7 +672,7 @@ async def old_find_exact_product_name_service(user_message: str, db: AsyncSessio
 
 
 async def find_exact_product_name_service_and_embed(user_message: str, keywords) -> str:
-    product_names = await search_embed(user_message, keywords)
+    product_names = await search_with_text(user_message, keywords)
     if not product_names:
         product_names =  "have not found anything"
     
@@ -696,7 +696,7 @@ async def find_exact_product_name_service_and_embed(user_message: str, keywords)
                 function_arguments = tool_call.function.arguments
                 function_name = tool_call.function.name
                 keywords = function_arguments.get("product_name_keywords")
-                result = await search_embed(user_message, keywords)
+                result = await search_with_text(user_message, keywords)
                 tools_answer.append({"role": "assistant", "tool_calls": [{"id": tool_call.id, "type": "function", "function": {"name": function_name, "arguments": function_arguments}}]})
                 tools_answer.append({"role": "tool", "tool_call_id": tool_call.id, "content": result})
             llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
@@ -732,3 +732,42 @@ async def search_embed(user_query, keywords):
     for item in results:
         del item['score']
     return json.dumps(results, ensure_ascii=False)
+
+async def get_embedding_vector(text_query: str) -> Optional[List[float]]:
+    """
+    متن را به سرور امبدینگ فرستاده و وکتور امبدینگ را دریافت می‌کند.
+    """
+    logger.info(f"Requesting embedding for text: '{text_query}'")
+    payload = {"text": text_query}
+    response = await post_async_request("http://89.169.32.124/:2256/embed", payload)
+
+    if response and "embedding" in response:
+        logger.info("✅ Embedding vector successfully received.")
+        return response["embedding"]
+    else:
+        logger.error("❌ Failed to get embedding vector from the server.")
+        return None
+    
+    
+async def search_with_text(text_query: str, keywords: List[str]) -> Optional[List[Dict]]:
+    """
+    فرآیند کامل جستجو را مدیریت می‌کند: ابتدا امبدینگ را گرفته و سپس جستجو را انجام می‌دهد.
+    """
+    # مرحله ۱: دریافت وکتور امبدینگ از سرور امبدینگ
+    embedding_vector = await get_embedding_vector(text_query)
+
+    if not embedding_vector:
+        logger.error("Search process terminated because embedding could not be generated.")
+        return None
+
+    # مرحله ۲: آماده‌سازی payload برای سرور جستجوی وکتور
+    logger.info("Preparing payload for vector search server...")
+    search_payload = {
+        "embedding": embedding_vector,
+        "keywords": keywords
+    }
+
+    # مرحله ۳: ارسال درخواست به سرور جستجو
+    search_results = await post_async_request("https://vector-search.darkube.app/vector-search/", search_payload)
+    
+    return search_results
