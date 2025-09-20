@@ -439,7 +439,7 @@ async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
         response_json = json.loads(json_part_str)
         winning_name = response_json.get("winning_product_name")
 
-        winning_key = product_map.get(winning_name)
+        winning_key = response_json.get("random_key")
         
         logger.info(f"LLM selected winner: '{winning_name}' with key: {winning_key}")
 
