@@ -12,7 +12,8 @@ from app.llm.prompts import (FIND_PRODUCT_PROMPTS, FIRST_AGENT_PROMPT, ROUTER_PR
     SCENARIO_THREE_PROMPTS, SCENARIO_TWO_PROMPTS, SELECT_BEST_MATCH_PROMPT, OLD_FIND_PRODUCT_PROMPTS, SCENARIO_FIVE_PROMPTS)
 from app.db.session import get_db
 from app.db.session import AsyncSessionLocal
-from app.llm.tools.definitions import FIRST_AGENT_TOOLS, FIRST_SCENARIO_TOOLS, OLD_FIRST_SCENARIO_TOOLS, EMBED_FIRST_AGENT_TOOLS
+from app.llm.tools.definitions import (EMBED_FIRST_AGENT_TOOLS, EMBED_FIRST_SCENARIO_TOOLS,
+    FIRST_AGENT_TOOLS, FIRST_SCENARIO_TOOLS, OLD_FIRST_SCENARIO_TOOLS)
 from app.llm.tools.handler import ToolHandler
 from app.core.http_client import post_async_request
 from app.core.utils import parse_llm_response_to_number
@@ -673,7 +674,7 @@ async def old_find_exact_product_name_service(user_message: str, db: AsyncSessio
 
 async def find_exact_product_name_service_and_embed(user_message: str, keywords) -> str:
     if keywords:
-        product_names = await search_with_text(user_message, keywords)
+        product_names = await search_embed(user_message, keywords)
         if not product_names:
             product_names =  "have not found anything"
         
@@ -690,7 +691,7 @@ async def find_exact_product_name_service_and_embed(user_message: str, keywords)
         message="",
         systemprompt=system_prompt,
         model="gpt-4.1-mini",
-        tools=EMBED_FIRST_AGENT_TOOLS
+        tools=EMBED_FIRST_SCENARIO_TOOLS
     )
     tools_answer = []
     for _ in range(5):
@@ -701,7 +702,7 @@ async def find_exact_product_name_service_and_embed(user_message: str, keywords)
                 parsed_arguments = json.loads(function_arguments)
                 logger.info(f"function_name = {function_name}\nfunction_arguments: {str(function_arguments)}")
                 keywords = parsed_arguments.get("product_name_keywords")
-                result = await search_with_text(user_message, keywords)
+                result = await search_embed(user_message, keywords)
                 result_string = json.dumps(result, ensure_ascii=False)
                 tools_answer.append({"role": "assistant", "tool_calls": [{"id": tool_call.id, "type": "function", "function": {"name": function_name, "arguments": function_arguments}}]})
                 tools_answer.append({"role": "tool", "tool_call_id": tool_call.id, "content": result_string})
@@ -725,7 +726,7 @@ async def find_exact_product_name_service_and_embed(user_message: str, keywords)
 
 async def search_embed(user_query, keywords):
     
-    url = "https://semantic-search.darkube.app"
+    url = "https://vector-search.darkube.app/hybrid-search/"
     payload = {
         "query": user_query,
         "keywords": keywords
@@ -739,41 +740,41 @@ async def search_embed(user_query, keywords):
         del item['score']
     return json.dumps(results, ensure_ascii=False)
 
-async def get_embedding_vector(text_query: str) -> Optional[List[float]]:
-    """
-    متن را به سرور امبدینگ فرستاده و وکتور امبدینگ را دریافت می‌کند.
-    """
-    logger.info(f"Requesting embedding for text: '{text_query}'")
-    payload = {"text": text_query}
-    response = await post_async_request("http://89.169.32.124:2256/embed", payload)
+# async def get_embedding_vector(text_query: str) -> Optional[List[float]]:
+#     """
+#     متن را به سرور امبدینگ فرستاده و وکتور امبدینگ را دریافت می‌کند.
+#     """
+#     logger.info(f"Requesting embedding for text: '{text_query}'")
+#     payload = {"text": text_query}
+#     response = await post_async_request("http://89.169.32.124:2256/embed", payload)
 
-    if response and "embedding" in response:
-        logger.info("✅ Embedding vector successfully received.")
-        return response["embedding"]
-    else:
-        logger.error("❌ Failed to get embedding vector from the server.")
-        return None
+#     if response and "embedding" in response:
+#         logger.info("✅ Embedding vector successfully received.")
+#         return response["embedding"]
+#     else:
+#         logger.error("❌ Failed to get embedding vector from the server.")
+#         return None
     
     
-async def search_with_text(text_query: str, keywords: List[str]):
-    """
-    فرآیند کامل جستجو را مدیریت می‌کند: ابتدا امبدینگ را گرفته و سپس جستجو را انجام می‌دهد.
-    """
-    # مرحله ۱: دریافت وکتور امبدینگ از سرور امبدینگ
-    embedding_vector = await get_embedding_vector(text_query)
+# async def search_with_text(text_query: str, keywords: List[str]):
+#     """
+#     فرآیند کامل جستجو را مدیریت می‌کند: ابتدا امبدینگ را گرفته و سپس جستجو را انجام می‌دهد.
+#     """
+#     # مرحله ۱: دریافت وکتور امبدینگ از سرور امبدینگ
+#     embedding_vector = await get_embedding_vector(text_query)
 
-    if not embedding_vector:
-        logger.error("Search process terminated because embedding could not be generated.")
-        return None
+#     if not embedding_vector:
+#         logger.error("Search process terminated because embedding could not be generated.")
+#         return None
 
-    # مرحله ۲: آماده‌سازی payload برای سرور جستجوی وکتور
-    logger.info("Preparing payload for vector search server...")
-    search_payload = {
-        "embedding": embedding_vector,
-        "keywords": keywords
-    }
+#     # مرحله ۲: آماده‌سازی payload برای سرور جستجوی وکتور
+#     logger.info("Preparing payload for vector search server...")
+#     search_payload = {
+#         "embedding": embedding_vector,
+#         "keywords": keywords
+#     }
 
-    # مرحله ۳: ارسال درخواست به سرور جستجو
-    search_results = await post_async_request("https://vector-search.darkube.app/hybrid-search/", search_payload)
+#     # مرحله ۳: ارسال درخواست به سرور جستجو
+#     search_results = await post_async_request("https://vector-search.darkube.app/hybrid-search/", search_payload)
     
-    return search_results
+    # return search_results
