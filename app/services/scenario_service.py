@@ -482,6 +482,7 @@ async def get_product_detail(db, product, code_to_get_info):
         
     if final_answer:
         product_details = json.dumps({
+            "random_key(id)": product.random_key,
             "persian_name": product.persian_name,
             "features": product.extra_features or {},
             "sellers_info": final_answer
@@ -489,6 +490,7 @@ async def get_product_detail(db, product, code_to_get_info):
         
     else:
         product_details = json.dumps({
+            "random_key(id)": product.random_key,
             "persian_name": product.persian_name,
             "features": product.extra_features or {}
         }, ensure_ascii=False, indent=2)
