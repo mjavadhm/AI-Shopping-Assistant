@@ -582,7 +582,7 @@ You are a highly intelligent AI shopping assistant. Your goal is to compare two 
     {{
       "winning_product_name": "<The exact persian_name of the winning product>",
       "reasoning_summary": "<A very brief, one-sentence summary of why it won>",
-      "random_key": "<The exact random_key of the winning product>"
+      "random_key": "<The exact random_key of the winning product that i gave you in product details>"
     }}
     ```
 3.  **Explanation Content:** In the text part *after* the JSON, explain your choice to the user in a helpful and clear manner, referencing the data.

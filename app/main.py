@@ -43,11 +43,13 @@ async def json_logging_middleware(request: Request, call_next):
     except Exception:
         response_body_json = {"error": "Could not parse response body as JSON"}
 
+    scenario = getattr(request.state, "scenario", None)
+
     log_data = {
         "request": request_body_json,
         "response": response_body_json,
         "openai_cost": openai_service.current_request_cost,
-        "scenario": scenario_context.get()
+        "scenario": scenario # <--- خواندن سناریو از request.state
     }
 
     task = BackgroundTask(log_request_response, log_data=log_data)
@@ -73,18 +75,19 @@ def read_root():
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_handler(
-    request: ChatRequest, 
+    chat_request: ChatRequest, 
+    request: Request,
     db: AsyncSession = Depends(get_db) # <--- Inject the DB session here
 ):
     """
     This endpoint handles the chat requests and implements the logic for different scenarios.
     """
     logger.info("------------------------------------------------------------------------------------")
-    logger.info(f"Received chat request with chat_id: {request.chat_id}")
-    logger.info(f"--> INCOMING Request Body: {request.model_dump()}")
+    logger.info(f"Received chat request with chat_id: {chat_request.chat_id}")
+    logger.info(f"--> INCOMING Request Body: {chat_request.model_dump()}")
 
-    response = await asyncio.wait_for(check_scenario_one(request, db=db), timeout=30.0)        
-    logger.info(f"Sending response for chat_id: {request.chat_id}")
+    response = await asyncio.wait_for(check_scenario_one(chat_request, db=db), timeout=30.0)        
+    logger.info(f"Sending response for chat_id: {chat_request.chat_id}")
     logger.info(f"Response body: {response.model_dump()}")
     
     return response

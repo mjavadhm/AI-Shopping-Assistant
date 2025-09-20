@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional, Tuple 
 import json
@@ -19,7 +19,6 @@ from app.core.http_client import post_async_request
 from app.core.utils import parse_llm_response_to_number
 from app.db import repository
 from app.core.logger import logger
-from app.core.context import scenario_context
 
 
 async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResponse:
@@ -77,7 +76,8 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
             
             
             # return ChatResponse(base_random_keys=[found_key])
-            scenario_context.set(scenario)
+            if scenario:
+                request.state.scenario = scenario
             if scenario == "SCENARIO_1_DIRECT_SEARCH":
                 return ChatResponse(base_random_keys=[found_key]) 
                 # response = await scenario_one(request, db=db, essential_keywords=essential_keywords, descriptive_keywords=descriptive_keywords)
@@ -413,10 +413,7 @@ async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
 
     first_product, second_product, code_to_get_info = product_data
     
-    product_map = {
-        first_product.persian_name: first_product.random_key,
-        second_product.persian_name: second_product.random_key
-    }
+    
 
     product_1_details = get_product_detail(db, first_product, code_to_get_info)
 
