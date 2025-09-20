@@ -749,7 +749,7 @@ async def get_embedding_vector(text_query: str) -> Optional[List[float]]:
         return None
     
     
-async def search_with_text(text_query: str, keywords: List[str]) -> Optional[List[Dict]]:
+async def search_with_text(text_query: str, keywords: List[str]):
     """
     فرآیند کامل جستجو را مدیریت می‌کند: ابتدا امبدینگ را گرفته و سپس جستجو را انجام می‌دهد.
     """
