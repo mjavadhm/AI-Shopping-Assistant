@@ -672,13 +672,16 @@ async def old_find_exact_product_name_service(user_message: str, db: AsyncSessio
 
 
 async def find_exact_product_name_service_and_embed(user_message: str, keywords) -> str:
-    product_names = await search_with_text(user_message, keywords)
-    if not product_names:
-        product_names =  "have not found anything"
-    
-    if len(product_names) > 100:
-        logger.warning(f"""Too many results ({len(product_names)})""")
-        product_names = f"Too many results ({len(product_names)})"
+    if keywords:
+        product_names = await search_with_text(user_message, keywords)
+        if not product_names:
+            product_names =  "have not found anything"
+        
+        if len(product_names) > 100:
+            logger.warning(f"""Too many results ({len(product_names)})""")
+            product_names = f"Too many results ({len(product_names)})"
+    else:
+        product_names = "use function to search"
     system_prompt = SELECT_BEST_MATCH_PROMPT.get("new_main_prompt_template_embed", "").format(
         user_query = user_message,
         search_results_str=product_names
@@ -771,6 +774,6 @@ async def search_with_text(text_query: str, keywords: List[str]):
     }
 
     # مرحله ۳: ارسال درخواست به سرور جستجو
-    search_results = await post_async_request("https://vector-search.darkube.app/vector-search/", search_payload)
+    search_results = await post_async_request("https://vector-search.darkube.app/hybrid-search/", search_payload)
     
     return search_results
