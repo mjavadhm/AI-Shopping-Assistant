@@ -212,66 +212,63 @@ You are an expert AI product matching engine. Your sole objective is to analyze 
 Now, based on the provided inputs, return the single best match.
 """,
     "new_main_prompt_template_embed": """### ROLE ###
-You are a specialized AI model for e-commerce search optimization. Your primary function is to analyze a user's search query and extract the most precise and distinguishing keywords that will effectively identify the specific product the user is looking for.
+You are a highly specialized AI assistant for an e-commerce platform.
 
 ### OBJECTIVE ###
-Analyze the provided `user_query` and generate a list of keywords (`product_name_keywords`). The goal is to isolate the single most unique identifier according to the strict rules and hierarchy defined below.
+Your sole objective is to find the unique ID of a product based on a user's query. You must use the provided tool to perform the search and then return **only the product ID** as a raw string.
 
-**1. Original User Query:**
-"{user_query}"
+### WORKFLOW ###
+1.  **Analyze User Query:** Read the user's request carefully.
+2.  **Determine Keyword:** Based on the strict hierarchy described in the `search_keyword` parameter, determine the single best keyword for the search.
+3.  **Call Tool:** Execute the `find_product_id` tool using that single keyword(if it have numbers you should use two keywords with both persian numbers and latin number).
+4.  **Iterate if Necessary:** If the tool does not find an ID using a high-priority keyword (like a model number), you must try again by calling the tool with the next-level priority keyword (e.g., the product noun). Continue this process until an ID is found.
+5.  **Return Output:** Once the tool returns an ID, your job is done. Output that ID directly.
 
-**2. Search Results (List of potential products):**
-{search_results_str}
+### OUTPUT RULES ###
+- Your final response **MUST** be the raw product ID string and nothing else.
+- **DO NOT** wrap the ID in JSON or quotes.
+- **DO NOT** include any explanatory text, labels, or conversational phrases like "Here is the ID:".
+- **Correct Output Example:** `aldymz`
+- **Incorrect Output Example:** `The product ID is aldymz`
+- **Incorrect Output Example:** `{{"product_id": "aldymz"}}`
 
-### CORE RULES & HIERARCHY ###
+### EXAMPLES ###
 
-**1. The "Rule of One"**
-Your primary directive is to extract **only one** keyword. This keyword must be selected based on the following strict order of priority.
+**Example 1:**
+* **user_query:** "I need the mechanical keyboard model G512 with RGB"
+* **Thought:** The query contains "G512", which is a Priority #1 (Unique Identifier). I will use this for the tool.
+* **Action:** `search_keyword=["G512"]`
+* **Tool Returns:** "aldymz"
+* **Final Output:**
+    aldymz
 
-**2. Keyword Selection Hierarchy**
+---
 
-* **Priority #1: Unique Identifier**
-    This is the most important keyword. Always prioritize a specific model number, product code, serial number, or any unique alphanumeric identifier (e.g., "RTX 4090", "G512", "ISBN-978-3-16-148410-0").
+**Example 2:**
+* **user_query:** "فرش ماشینی کد ۸۱۰۱ کاشان"
+* **Thought:** The query has a unique code "۸۱۰۱". This is Priority #1. I will use this also its number so i will use both type.
+* **Action:** `search_keyword=["۸۱۰۱","8101"]`
+* **Tool Returns:** "RUG-045"
+* **Final Output:**
+    RUG-045
 
-* **Priority #2: Specific Product Noun**
-    If no unique identifier is present, extract the most specific noun that names the product itself (e.g., "mattress", "blender", "sofa", "فرش").
+---
 
-* **Priority #3: Essential Named Feature**
-    As a last resort, if the product noun is too generic, extract a key feature that is part of the product's official name or model (e.g., "OLED" for a TV, "Mechanical" for a keyboard, "سه-بعدی" for a rug).
-
-**3. The Sole Exception: Numerical Codes**
-The *only* exception to the "Rule of One" is for numerical codes in languages that use different numeral systems. If you identify a numerical code, you **must** return a list containing both the original numeral and its Western Arabic (English) numeral equivalent.
-* **Example**: If the query contains "کد ۸۱۰۱", the output must be `['۸۱۰۱', '8101']`.
-
-**4. Exclusions**
-**DO NOT** extract generic, subjective, or non-identifying words. This includes:
-- Colors (e.g., "red", "blue")
-- Sizes (e.g., "large", "small")
-- Subjective qualities (e.g., "best", "cheap", "beautiful")
-- General words (e.g., "for", "with", "and", "a")
-
-** if you cant find the product use extract_search_keywords for new query**
-    
-### EXAMPLES (FEW-SHOT LEARNING) ###
-
-1.  **user_query**: "gaming keyboard mechanical RGB model G512"
-    ["G512"]
-
-2.  **user_query**: "فرش ماشینی کد ۸۱۰۱ کاشان"
-    ["۸۱۰۱", "8101"]
-
-3.  **user_query**: "I need a new electric kettle for my kitchen"
-    ["kettle"]
-
-4.  **user_query**: "a big red comfortable sofa"
-    ["sofa"]
-
-5.  **user_query**: "تلویزیون هوشمند OLED"
-    ["OLED"]
-
+**Example 3:**
+* **user_query:** "a comfortable red sofa"
+* **Thought:** No unique code. The most specific product noun (Priority #2) is "sofa". I will ignore "comfortable" and "red".
+* **Action:** `search_keyword=["sofa"]`
+* **Tool Returns:** "SOFA-002"
+* **Final Output:**
+    SOFA-002
 
 ### YOUR TASK ###
-Now, based on the provided inputs, return the single best match.
+Analyze the following `user_query`, follow the workflow, and return only the final product ID.
+
+**User Query:** "{user_query}"
+
+**default search result:** "{search_results_str}"
+
 """,
     "new_search_prompt_template_embed": """### ROLE & OBJECTIVE ###
 You are an expert AI product matching engine. Your sole objective is to analyze the user's original query and select the single most accurate product name from the provided list of search results. Your output must be precise and machine-readable.
