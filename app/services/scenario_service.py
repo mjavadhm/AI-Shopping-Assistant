@@ -498,12 +498,16 @@ async def get_product_detail(db, product, code_to_get_info):
 async def find_two_product(user_message, db_session_factory):
     try:
         async with asyncio.TaskGroup() as tg:
-            task1 = tg.create_task(find_p_in_fifth_scenario(user_message, 1, db_session_factory))
-            task2 = tg.create_task(find_p_in_fifth_scenario(user_message, 2, db_session_factory))
+            # task1 = tg.create_task(find_p_in_fifth_scenario(user_message, 1, db_session_factory))
+            # task2 = tg.create_task(find_p_in_fifth_scenario(user_message, 2, db_session_factory))
+            task1 = tg.create_task(find_random_keys(user_message, db_session_factory))
+            
             task3 = tg.create_task(get_calculate_code(user_message))
         
-        first_product = task1.result()
-        second_product = task2.result()
+        # first_product = task1.result()
+        # second_product = task2.result()
+        first_product, second_product = task1.result()
+        
         code_to_get_info = task3.result()
         
         return (first_product, second_product, code_to_get_info)
@@ -568,6 +572,35 @@ async def find_p_in_fifth_scenario(user_message, index, db_session_factory)->str
             product = await repository.get_product_by_name_like(db=db, product_name=p_name)            
         logger.info(f"product for index {index}: {str(product.persian_name)}")
         return product
+    
+    
+async def find_random_keys(user_message, db_session_factory)->str:
+    async with db_session_factory() as db:
+
+        system_prompt = SCENARIO_FIVE_PROMPTS.get("find_random_keys", "")
+        
+        tool_handler = ToolHandler(db=db)
+        tools_answer = []
+
+        llm_response, tool_calls = await simple_openai_gpt_request(
+            message=user_message,
+            systemprompt=system_prompt,
+            model="gpt-4.1-mini",
+        )
+
+        if "```json" in llm_response:
+            llm_response = llm_response.split("```python")[1].split("```")[0].strip()
+        data = json.loads(llm_response)
+
+        product_rkey_1 = data['product_1_id']
+        product_rkey_2 = data['product_2_id']
+        product_1 = await repository.get_product_by_random_key(db=db, random_key=product_rkey_1)
+        product_2 = await repository.get_product_by_random_key(db=db, random_key=product_rkey_2)
+        if not product_1 or not product_2:
+            logger.info("No matching product keys found. trying to search by like.")
+                        
+        logger.info(f"products: {str(product_1.persian_name)},   {str(product_2.persian_name)}")
+        return product_1, product_2
 
 
 async def get_calculate_code(user_request):

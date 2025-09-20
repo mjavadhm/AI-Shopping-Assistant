@@ -650,6 +650,36 @@ def calculate(data):
 Now, based on the following user question, generate the Python code.
 
 **User Question:** "{user_query}"
+""",
+    "find_random_keys":"""You are an intelligent text-processing assistant. Your task is to analyze a user's query that compares two products and extract their unique identifiers (IDs).
+
+Rules:
+
+The user's text will introduce two products for comparison.
+
+Each product's identifier is a unique string of characters that immediately follows a keyword like "ID", "identifier", or "SKU".
+
+Crucially: Do not confuse the identifier with a model number or part of the product's name. You must only extract the value that is explicitly labeled as the identifier.
+
+Your output must be a valid JSON object. This object must contain two keys, product_1_id and product_2_id. The values should be the extracted IDs in the order they appear in the text.
+
+Example:
+
+User Input:
+
+For comparison, which of these has more pieces: the "Glass Spice Jar with Wooden Lid & Ladder Stand" with ID "gouchy" or the "McCarthy Wooden Stand Spice Jar" with identifier "uhqmhb"?
+
+Your Expected Output:
+
+
+
+{
+
+  "product_1_id": "gouchy",
+
+  "product_2_id": "uhqmhb"
+
+}
 """
 
 }
