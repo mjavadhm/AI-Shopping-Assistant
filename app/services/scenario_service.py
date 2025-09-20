@@ -70,8 +70,8 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession) -> ChatResp
             logger.info(f"CLASSIFIED SCENARIO: {scenario}, KEYWORDS: {keywords}")
             if scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
                 found_key = await find_exact_product_name_service_and_embed(user_message = request.messages[-1].content.strip(), keywords=keywords)
-            if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
-                raise HTTPException(status_code=404, detail="No products found matching the keywords.")
+                if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
+                    raise HTTPException(status_code=404, detail="No products found matching the keywords.")
             
             
             # return ChatResponse(base_random_keys=[found_key])
@@ -695,6 +695,7 @@ async def find_exact_product_name_service_and_embed(user_message: str, keywords)
             for tool_call in tool_calls:
                 function_arguments = tool_call.function.arguments
                 function_name = tool_call.function.name
+                logger.info(f"function_name = {function_name}\nfunction_arguments: {str(function_arguments)}")
                 keywords = function_arguments.get("product_name_keywords")
                 result = await search_with_text(user_message, keywords)
                 tools_answer.append({"role": "assistant", "tool_calls": [{"id": tool_call.id, "type": "function", "function": {"name": function_name, "arguments": function_arguments}}]})
