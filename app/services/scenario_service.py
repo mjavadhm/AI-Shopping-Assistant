@@ -412,7 +412,7 @@ async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
         raise HTTPException(status_code=500, detail="Could not process the comparison due to an internal error.")
 
     first_product, second_product, code_to_get_info = product_data
-    
+    logger.info(f"code_to_get_info type: {type(code_to_get_info)}\ncode_to_get_info:\n{code_to_get_info}")
     
     logger.info(f"First product key: {first_product.random_key if first_product else 'None'}")
     product_1_details = await get_product_detail(db, first_product, code_to_get_info)
@@ -462,7 +462,7 @@ async def get_product_detail(db, product, code_to_get_info):
     sellers_context = await get_sellers_context(db, product.random_key)
     logger.info(f"product id:{product.random_key}\ncontext:{str(sellers_context)}\n\ncode_to_get_info:{code_to_get_info}")
     try:
-
+        logger.info(f"code_to_get_info type: {type(code_to_get_info)}\ncode_to_get_info:\n{code_to_get_info}")
         local_scope = {}
         exec(code_to_get_info, globals(), local_scope)
 
