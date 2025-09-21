@@ -55,7 +55,7 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
             response = await scenario_four_in_memory(request)
 
         else:
-            
+            found_key = None
             #with full text search
             # scenario, essential_keywords, descriptive_keywords = await classify_scenario(request)
             
