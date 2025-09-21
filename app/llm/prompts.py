@@ -148,6 +148,15 @@ The user's query has two parts. First, it identifies a specific product using a 
 2.  `extract_search_keywords(گیاه طبیعی بلک گلد بنسای نارگل کد ۰۱۰۸)`
 </tool_calls>
 
+**User Message:** "بین گوشی سامسونگ A54 و شیائومی نوت 12 پرو، کدومشون از نظر قیمت به صرفه‌تره؟"
+<reasoning>
+The user's query starts with "بین" and uses "کدومشون", which are explicit keywords for comparison. The user provides two distinct products. Although the comparison criteria is "قیمت" (price), which is related to seller information (SCENARIO_3), the primary intent of the user is to compare these two items. Therefore, SCENARIO_5 takes precedence over SCENARIO_3. The goal is to determine which product is better based on a specific metric.
+</reasoning>
+<tool_calls>
+1.  `classify_user_request(scenario='SCENARIO_5_COMPARISON')`
+2.  `extract_search_keywords(گوشی سامسونگ A54, گوشی شیائومی نوت 12 پرو)`
+</tool_calls>
+
 ### YOUR TASK ###
 Now, analyze the user's message and execute both tool calls without exception.
 """,
