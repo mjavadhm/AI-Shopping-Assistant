@@ -132,7 +132,7 @@ async def classify_scenario_for_embed(request: ChatRequest) -> Tuple[str, str]:
                 parsed_args = json.loads(tool_call.function.arguments)
                 if tool_call.function.name == "classify_user_request":
                     scenario = parsed_args.get("scenario", "UNCATEGORIZED")
-                elif tool_call.function.name == "extract_search_keywords":
+                elif tool_call.function.name == "extract_search":
                     product_name = parsed_args.get("product_name", [])
 
             except json.JSONDecodeError:
