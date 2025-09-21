@@ -75,19 +75,19 @@ def read_root():
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_handler(
-    chat_request: ChatRequest, 
-    request: Request,
+    request: ChatRequest, 
+    http_request: Request,
     db: AsyncSession = Depends(get_db) # <--- Inject the DB session here
 ):
     """
     This endpoint handles the chat requests and implements the logic for different scenarios.
     """
     logger.info("------------------------------------------------------------------------------------")
-    logger.info(f"Received chat request with chat_id: {chat_request.chat_id}")
-    logger.info(f"--> INCOMING Request Body: {chat_request.model_dump()}")
+    logger.info(f"Received chat request with chat_id: {request.chat_id}")
+    logger.info(f"--> INCOMING Request Body: {request.model_dump()}")
 
-    response = await asyncio.wait_for(check_scenario_one(chat_request, db=db), timeout=30.0)        
-    logger.info(f"Sending response for chat_id: {chat_request.chat_id}")
+    response = await asyncio.wait_for(check_scenario_one(request, db=db, http_request=http_request), timeout=30.0)        
+    logger.info(f"Sending response for chat_id: {request.chat_id}")
     logger.info(f"Response body: {response.model_dump()}")
     
     return response
