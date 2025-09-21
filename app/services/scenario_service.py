@@ -415,11 +415,11 @@ async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     
     
     logger.info(f"First product key: {first_product.random_key if first_product else 'None'}")
-    product_1_details = get_product_detail(db, first_product, code_to_get_info)
+    product_1_details = await get_product_detail(db, first_product, code_to_get_info)
     logger.info(f"product_1_details: {product_1_details}")
     
     logger.info(f"Second product key: {second_product.random_key if second_product else 'None'}")
-    product_2_details = get_product_detail(db, second_product, code_to_get_info)
+    product_2_details = await get_product_detail(db, second_product, code_to_get_info)
     logger.info(f"product_2_details: {product_2_details}")
 
     comparison_system_prompt = SCENARIO_FIVE_PROMPTS.get("comparison_prompt").format(
@@ -500,6 +500,7 @@ async def get_product_detail(db, product, code_to_get_info):
             "features": product.extra_features or {}
         }, ensure_ascii=False, indent=2)
         
+    logger
     
     return product_details
 
