@@ -102,7 +102,7 @@ async def classify_scenario_for_embed(request: ChatRequest) -> Tuple[str, str]:
         system_prompt = FIRST_AGENT_PROMPT.get("main_prompt", "")
         last_message = request.messages[-1].content.strip()
 
-        _, tool_calls = await simple_openai_gpt_request_with_tools(
+        response, tool_calls = await simple_openai_gpt_request_with_tools(
             message=last_message,
             systemprompt=system_prompt,
             model="gpt-4.1-mini",
@@ -111,7 +111,7 @@ async def classify_scenario_for_embed(request: ChatRequest) -> Tuple[str, str]:
 
         scenario = "UNCATEGORIZED"
         product_name = ""
-        
+        logger.info(response)
         if not tool_calls:
             logger.warning("No tool calls returned from the model.")
             return scenario, product_name
