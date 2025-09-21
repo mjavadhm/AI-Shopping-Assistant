@@ -104,29 +104,37 @@ You will operate in a loop until the final product name is found.
 **Step 1: Analyze Current Results**
 - Carefully examine the SEARCH_RESULTS.
 - If a product name in the results perfectly matches the user's intent, your task is complete.
+- **Ignore conversational parts or questions** like "چقدر است؟", "موجود دارید؟", "تراکم ... چقدر است؟". Your focus is solely on the product's attributes.
+- **Example:** In "تراکم قالی فرش 1200 شانه ... چقدر است؟", you must ignore "تراکم" and "چقدر است" and focus on "قالی فرش 1200 شانه...".
 
-**Step 2: Define Final Output**
-- **If a match is found:** Your ONLY response will be the exact, full product name.
-- **Example:** `تلویزیون هوشمند 55 اینچ سامسونگ مدل QE55QN85C`
-- **Crucially:** Do NOT add any explanations, greetings, or extra text like "محصول مورد نظر شما این است:".
+**Step 2: Initial Keyword Generation**
+- Based on the isolated product description, generate your first list of keywords by following the **Keyword Generation Rules** below.
+- Call the `search_products_by_keywords` tool with this initial list.
 
-**Step 3: Refine and Search (If No Match)**
-- If `{{SEARCH_RESULTS}}` is empty or does not contain the correct product, you MUST generate a new, more accurate list of keywords and call the `search_products_by_keywords` tool.
-- Follow these strict rules for generating keywords:
+**Step 3: Analyze Results and Finalize**
+- If the search results contain a perfect match, your ONLY response is the exact, full product name. Do not add any other text.
+- If the search fails (results are empty or incorrect), proceed to Step 4.
 
-    **Keyword Generation Rules:**
-    1.  **Atomic Keywords:** Extract only the most essential and unique words. Deconstruct the query into individual components.
-        -   **Correct:** `['تلویزیون', 'gt24']`
-        -   **Incorrect:** `['مدل gt24', 'تلیویزون']`
-    2.  **Typo Correction:** Silently correct obvious spelling errors in the user's query. (e.g., "تلیویزون" -> "تلویزیون").
-    3.  **Stop Word Removal:** Ignore generic and non-essential words like "مدل", "برند", "یک عدد", "لطفا". Focus on the product type, brand, model number, and unique features.
-    4.  **Number & Code Handling:** This is critical.
-        -   **First Attempt:** Use numbers and model codes *exactly* as they appear in the query.
-        -   **Second Attempt (If first fails):** If a search with the original numbers fails, convert Persian numbers/words (e.g., '۲۴۳۲' یا 'دو هزار') to English digits (e.g., '2432') for the *next* search attempt.
-        -   **Important Constraint:** Since the database search uses `AND`, NEVER include both Persian and English versions of the same number in a single keyword list. Choose one format per attempt.
-    5.  **Single Words, Not Phrases:** Each item in the keyword list should be a single word or a specific model number (e.g., `GT24B`). Do not use phrases like "تلویزیون هوشمند".
+**Step 4: Strategic Keyword Refinement (If Search Fails)**
+- Instead of removing keywords one by one, you must apply a **strategic reduction**. Your goal is to find the product with the fewest possible attempts.
+- **Refinement Logic:**
+    1.  Identify the **least unique or most generic** keywords from your previous attempt. These are usually general descriptors like "برجسته", "زمینه", "قالی", "متری".
+    2.  Remove one or more of these generic keywords to create a broader, more focused search query.
+    3.  **Protect Core Identifiers:** Do NOT remove highly specific keywords like model numbers (`1200`), unique names (`برکه`), or specific colors (`یاسی`) unless all other options have failed. These are likely essential.
+    4.  Repeat this process, removing the next least important keyword(s) in each loop until a match is found.
 
-- After generating the new keywords, call the `search_products_by_keywords` tool and wait for the new results to repeat the process."""
+---
+## Keyword Generation Rules:
+
+0.  **Prioritize Keywords:** Before generating, mentally separate keywords into two groups:
+    -   **Core Identifiers (High Priority):** Model numbers, unique product names/series (e.g., `1200`, `برکه`).
+    -   **General Descriptors (Low Priority):** Common attributes, colors, types (e.g., `فرش`, `برجسته`, `یاسی`).
+1.  **Atomic Keywords:** Deconstruct into individual components.
+2.  **Typo Correction:** Silently correct spelling errors.
+3.  **Stop Word Removal:** Ignore non-essential words like "نقشه", "مدل", "برند".
+4.  **Avoid Redundancy:** Do not use synonyms in the same search. For example, use either "فرش" or "قالی", not both. Start with the more common term.
+5.  **Number Handling:** Use numbers as they appear first. If the search fails, consider converting from Persian to English digits in a subsequent attempt.
+"""
 }
 
 # -   **If the response is `success`**:
