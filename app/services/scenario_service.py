@@ -197,7 +197,7 @@ async def old_classify_scenario(request: ChatRequest) -> str:
         last_message = request.messages[-1].content.strip()
 
         llm_response = await simple_openai_gpt_request(
-            message=last_message,
+            message=f"user_query: {last_message}",
             systemprompt=system_prompt,
             model="gpt-4.1-mini",
                     
