@@ -64,7 +64,7 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
                 found_key = await find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db, possible_product_name=product_name)
             if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
                 raise HTTPException(status_code=404, detail="No products found matching the keywords.")
-            return ChatResponse(base_random_keys=[found_key]) 
+            # return ChatResponse(base_random_keys=[found_key]) 
             #------------------------------------------
             #with keyword simple
             # scenario = await old_classify_scenario(request)
@@ -581,7 +581,7 @@ async def find_p_in_fifth_scenario(user_message, index, db_session_factory)->str
         #embed
         # found_key = await find_exact_product_name_service_and_embed(user_message, None)
         #old
-        found_key = await old_find_exact_product_name_service(user_message, db)
+        found_key = await find_exact_product_name_service(user_message = user_message, db=db, possible_product_name=None)
         product = await repository.get_product_by_random_key(db=db, random_key=found_key)
         
         # system_prompt = SCENARIO_FIVE_PROMPTS.get("find_p_prompt", "").format(
