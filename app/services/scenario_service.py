@@ -36,6 +36,8 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
         last_message = request.messages[-1].content.strip()
         response = None
         scenario = "SANITY_CHECK"
+        chat_id = request.chat_id
+        history = chat_histories.get(chat_id, [])
         # --- Scenario Zero: Sanity Checks ---
         if last_message == "ping":
             response = ChatResponse(message="pong")
@@ -47,6 +49,10 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
         elif last_message.startswith("return member random key:"):
             key = last_message.replace("return member random key:", "").strip()
             response = ChatResponse(member_random_keys=[key])
+        
+        elif history:
+            scenario = "SCENARIO_4_CONVERSATIONAL_SEARCH"
+            response = await scenario_four_in_memory(request)
 
         else:
             
