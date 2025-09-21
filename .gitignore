@@ -1,5 +1,6 @@
 test_cases.py
 test_cases.log
+my_tests.json
 .vscode/
 data/
 test.py
