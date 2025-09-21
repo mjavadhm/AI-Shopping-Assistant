@@ -25,20 +25,24 @@ old_search_products_tool = {
     "type": "function",
     "function": {
         "name": "search_products_by_keywords",
-        "description": "Searches the product database based on a list of keywords from the user's query. Use this to find the product the user is asking for.",
+        "description": "Searches the product database using a list of atomic and essential keywords. Call this function when the initial search is unsuccessful or the results are incorrect, requiring a more refined set of keywords.",
         "parameters": {
-            "type": "object",
-            "properties": {
-                "keywords": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "A list of essential keywords from the user's request. e.g., ['فلاور بگ', 'رز سفید']"
-                }
+        "type": "object",
+        "properties": {
+            "keywords": {
+            "type": "array",
+            "items": {
+                "type": "string"
             },
-            "required": ["keywords"],
+            "description": "A list of the most critical, individual keywords extracted from the query. Rules: Correct typos, remove stop words (like 'مدل'), and separate all terms. Example: For the query 'تلویزیون مدل gt24', the correct value is ['تلویزیون', 'gt24']."
+            }
         },
-    },
-}
+        "required": [
+            "keywords"
+        ]
+        }
+    }
+    }
 
 extract_search_keywords_tool = {
     "type": "function",

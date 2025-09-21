@@ -65,18 +65,18 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
             #     raise HTTPException(status_code=404, detail="No products found matching the keywords.")
             #------------------------------------------
             #with keyword simple
-            # scenario = await old_classify_scenario(request)
-            # logger.info(f"CLASSIFIED SCENARIO: {scenario}")
-            # if scenario != "SCENARIO_5_COMPARISON":
+            scenario = await old_classify_scenario(request)
+            logger.info(f"CLASSIFIED SCENARIO: {scenario}")
+            if scenario != "SCENARIO_5_COMPARISON":
                 
-            #     found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
-            #     logger.info(f"found_key: {found_key}")
+                found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
+                logger.info(f"found_key: {found_key}")
             #-----------------------------------------------------
             #with embed
             #---------------------------------------------
-            keywords = ''
-            scenario, product_name = await classify_scenario_for_embed(request)
-            logger.info(f"CLASSIFIED SCENARIO: {scenario}, product_name: {product_name}")
+            # keywords = ''
+            # scenario, product_name = await classify_scenario_for_embed(request)
+            # logger.info(f"CLASSIFIED SCENARIO: {scenario}, product_name: {product_name}")
             if scenario == "SCENARIO_4_CONVERSATIONAL_SEARCH":
                 response = await scenario_four_in_memory(request)
             if scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
@@ -576,7 +576,10 @@ async def find_p_in_fifth_scenario(user_message, index, db_session_factory)->str
         else:
             raise ValueError("index should be 1 or 2")
         user_message = f"find the {index_str} product in this compare request:\n\n{user_message}"
-        found_key = await find_exact_product_name_service_and_embed(user_message, None)
+        #embed
+        # found_key = await find_exact_product_name_service_and_embed(user_message, None)
+        #old
+        found_key = await old_find_exact_product_name_service(user_message, db)
         product = await repository.get_product_by_random_key(db=db, random_key=found_key)
         
         # system_prompt = SCENARIO_FIVE_PROMPTS.get("find_p_prompt", "").format(
@@ -718,8 +721,12 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, e
     logger.info(f"found_keys: {found_keys}")
     return found_keys[0] if found_keys else None
 
-async def old_find_exact_product_name_service(user_message: str, db: AsyncSession) -> Optional[str]:
-    system_prompt = OLD_FIND_PRODUCT_PROMPTS.get("main_prompt", "")
+async def old_find_exact_product_name_service(user_message: str, db: AsyncSession, previous_keywords = None, search_result=None, user_query=None ) -> Optional[str]:
+    system_prompt = OLD_FIND_PRODUCT_PROMPTS.get("v2_prompt", "").format(
+        user_query = user_query,
+        search_result = search_result,
+        previous_keywords = previous_keywords,
+    )
     tool_handler = ToolHandler(db=db)
     llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
         message=user_message,
