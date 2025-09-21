@@ -67,18 +67,17 @@ extract_search_keywords_tool = {
 product_name_keywords_tool = {
     "type": "function",
     "function": {
-        "name": "extract_search_keywords",
-        "description": "Extracts the single most differentiating keyword from a user's product search query. This follows a strict priority: code first, then proper name.",
+        "name": "extract_search",
+        "description": "semantic search db",
         "parameters": {
             "type": "object",
             "properties": {
-                "product_name_keywords": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "A list with ONE keyword. Follow this priority: 1st, isolate a unique code/model number. 2nd, if NO code exists, isolate the unique proper name (e.g., a design name, color, material). For 'فرش ماشینی طرح افشان زمینه آبی', the output MUST be ['افشان']."
+                "product_name": {
+                    "type": "string",
+                    "description": "the most possible name of the product(include model number, color, size, etc)."
                 }
             },
-            "required": ["required"]
+            "required": ["product_name"]
         }
     }
 }
