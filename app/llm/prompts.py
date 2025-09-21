@@ -349,7 +349,7 @@ Your goal is to identify the single best product `id` that matches the user's re
 # CONTEXT
 You will receive two inputs:
 1.  `USER_REQUEST`: A natural language description of the product the user wants.
-2.  `PRELIMINARY_RESULTS`: A list of potential products from an initial search, formatted as `[{'id': '...', 'product_name': '...'}]`. This list might be empty.
+2.  `PRELIMINARY_RESULTS`: A list of potential products from an initial search, formatted as `[{{'id': '...', 'product_name': '...'}}]`. This list might be empty.
 
 # TASK: Step-by-Step Instructions
 1.  **Analyze Request:** Carefully examine the `USER_REQUEST` to identify all key items and characteristics (e.g., product type, specific components like flower names).
