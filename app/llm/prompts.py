@@ -341,34 +341,42 @@ Now, based on the provided inputs, return the single best match.
 # **default search result:** "{search_results_str}"
 
 # """,
-    "new_main_prompt_template_embed": """### ROLE ###
-You are a highly specialized AI assistant for an e-commerce platform.
+    "new_main_prompt_template_embed": """# ROLE: Product Matching Engine
 
-### OBJECTIVE ###
-Your sole objective is to find the unique ID of a product based on a user's query. You must use the provided tool to perform the search and then return **only the product ID** as a raw string.
+# GOAL
+Your goal is to identify the single best product `id` that matches the user's request. You must follow a strict, sequential process.
 
-### WORKFLOW ###
-1.  **Analyze User Query:** Read the user's request carefully.
-2.  **Determine product possible name:** Based on the users query enter the possible name so i can embed it and search it.
-3.  **Call Tool:** Execute the `extract_search` tool if product is not in search result using that possible name .
-5.  **Return Output:** Once the tool returns an ID, your job is done. Output that ID directly.
+# CONTEXT
+You will receive two inputs:
+1.  `USER_REQUEST`: A natural language description of the product the user wants.
+2.  `PRELIMINARY_RESULTS`: A list of potential products from an initial search, formatted as `[{'id': '...', 'product_name': '...'}]`. This list might be empty.
 
-### OUTPUT RULES ###
-- Your final response **MUST** be the raw product ID string and nothing else.
-- **DO NOT** wrap the ID in JSON or quotes.
-- **DO NOT** include any explanatory text, labels, or conversational phrases like "Here is the ID:".
-- **Correct Output Example:** aldymz
-- **Incorrect Output Example:** `The product ID is aldymz`
-- **Incorrect Output Example:** `{{"product_id": "aldymz"}}`
+# TASK: Step-by-Step Instructions
+1.  **Analyze Request:** Carefully examine the `USER_REQUEST` to identify all key items and characteristics (e.g., product type, specific components like flower names).
 
+2.  **Check Preliminary List:** Go through each item in the `PRELIMINARY_RESULTS` list. Compare the `product_name` of each item with the key characteristics from the `USER_REQUEST`.
 
-### YOUR TASK ###
-Analyze the following `user_query`, follow the workflow, and return only the final product ID.
+3.  **Decision Point:**
+    * **If a strong match is found** in the `PRELIMINARY_RESULTS`: Immediately stop your process and output the `id` of that matching product.
+    * **If NO strong match is found** (or if the list is empty): Proceed to the next step.
 
-**User Query:** "{user_query}"
+4.  **Use Search Tool (If Necessary):** If and only if you did not find a match in the previous step, use your available search tools to find a product that accurately matches the `USER_REQUEST`.
 
-**default search result:** "{search_results_str}"
+5.  **Final Output:** From either Step 3 or Step 4, identify the final product `id`.
 
+# OUTPUT CONSTRAINTS
+- **CRITICAL:** Your final response MUST be the product `id` string and NOTHING else.
+- **DO NOT** include labels, explanations, apologies, or any text other than the ID itself.
+- **Example:** If the correct ID is "prod_abc_123", your entire output must be `prod_abc_123`.
+
+---
+# USER INPUTS
+
+## USER_REQUEST:
+{user_query}
+
+## PRELIMINARY_RESULTS:
+{search_results_str}
 """,
     "new_search_prompt_template_embed": """### ROLE & OBJECTIVE ###
 You are an expert AI product matching engine. Your sole objective is to analyze the user's original query and select the single most accurate product name from the provided list of search results. Your output must be precise and machine-readable.

@@ -683,7 +683,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, p
         product_names = "use function to search"
     system_prompt = SELECT_BEST_MATCH_PROMPT.get("new_main_prompt_template_embed", "").format(
         user_query = user_message,
-        search_results_str=product_names
+        search_results_str=str(product_names)
     )
     llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
         message="",
@@ -702,7 +702,7 @@ async def find_exact_product_name_service(user_message: str, db: AsyncSession, p
                 possible_product_name = parsed_arguments.get("product_name")
                 product_names = await repository.find_similar_products(db, possible_product_name)
                 tools_answer.append({"role": "assistant", "tool_calls": [{"id": tool_call.id, "type": "function", "function": {"name": function_name, "arguments": function_arguments}}]})
-                tools_answer.append({"role": "tool", "tool_call_id": tool_call.id, "content": product_names})
+                tools_answer.append({"role": "tool", "tool_call_id": tool_call.id, "content": str(product_names)})
             llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
                 message=user_message,
                 systemprompt=system_prompt,
