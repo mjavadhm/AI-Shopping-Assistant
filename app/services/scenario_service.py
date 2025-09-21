@@ -66,8 +66,10 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
             #------------------------------------------
             #with keyword simple
             scenario = await old_classify_scenario(request)
+            if scenario:
+                http_request.state.scenario = scenario
             logger.info(f"CLASSIFIED SCENARIO: {scenario}")
-            if scenario != "SCENARIO_5_COMPARISON":
+            if scenario not in  ["SCENARIO_5_COMPARISON","SCENARIO_4_CONVERSATIONAL_SEARCH"]:
                 
                 found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
                 logger.info(f"found_key: {found_key}")
@@ -79,15 +81,13 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
             # logger.info(f"CLASSIFIED SCENARIO: {scenario}, product_name: {product_name}")
             if scenario == "SCENARIO_4_CONVERSATIONAL_SEARCH":
                 response = await scenario_four_in_memory(request)
-            if scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
-                found_key = await find_exact_product_name_service_and_embed(user_message = request.messages[-1].content.strip(), possible_product_name=product_name)
-                if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
+            # if scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
+            #     found_key = await find_exact_product_name_service_and_embed(user_message = request.messages[-1].content.strip(), possible_product_name=product_name)
+            elif not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
                     raise HTTPException(status_code=404, detail="No products found matching the keywords.")
             
             
             # return ChatResponse(base_random_keys=[found_key])
-            if scenario:
-                http_request.state.scenario = scenario
             if scenario == "SCENARIO_1_DIRECT_SEARCH":
                 return ChatResponse(base_random_keys=[found_key]) 
                 # response = await scenario_one(request, db=db, essential_keywords=essential_keywords, descriptive_keywords=descriptive_keywords)
