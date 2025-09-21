@@ -8,8 +8,9 @@ import json
 
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.openai_service import simple_openai_gpt_request, simple_openai_gpt_request_with_tools
-from app.llm.prompts import (FIND_PRODUCT_PROMPTS, FIRST_AGENT_PROMPT, ROUTER_PROMPT, 
-    SCENARIO_THREE_PROMPTS, SCENARIO_TWO_PROMPTS, SELECT_BEST_MATCH_PROMPT, OLD_FIND_PRODUCT_PROMPTS, SCENARIO_FIVE_PROMPTS)
+from app.llm.prompts import (FIND_PRODUCT_PROMPTS, FIRST_AGENT_PROMPT, OLD_FIND_PRODUCT_PROMPTS,
+    ROUTER_PROMPT, SCENARIO_FIVE_PROMPTS, SCENARIO_FOUR_PROMPTS, SCENARIO_THREE_PROMPTS,
+    SCENARIO_TWO_PROMPTS, SELECT_BEST_MATCH_PROMPT)
 from app.db.session import get_db
 from app.db.session import AsyncSessionLocal
 from app.llm.tools.definitions import (EMBED_FIRST_AGENT_TOOLS, EMBED_FIRST_SCENARIO_TOOLS,
@@ -20,6 +21,7 @@ from app.core.utils import parse_llm_response_to_number
 from app.db import repository
 from app.core.logger import logger
 
+chat_histories = {}
 
 async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_request: Request) -> ChatResponse:
     """
@@ -69,6 +71,8 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
             keywords = ''
             scenario, product_name = await classify_scenario_for_embed(request)
             logger.info(f"CLASSIFIED SCENARIO: {scenario}, product_name: {product_name}")
+            if scenario == "SCENARIO_4_CONVERSATIONAL_SEARCH":
+                response = await scenario_four_in_memory(request)
             if scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
                 found_key = await find_exact_product_name_service_and_embed(user_message = request.messages[-1].content.strip(), possible_product_name=product_name)
                 if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
@@ -85,8 +89,6 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
                 response = await scenario_two(request, db=db, found_key=found_key)
             elif scenario == "SCENARIO_3_SELLER_INFO":
                 response = await scenario_three(request, db=db, found_key=found_key)
-            # elif scenario == "SCENARIO_4_CONVERSATIONAL_SEARCH":
-            #     response = await scenario_three(request, db=db, found_key=found_key)
             elif scenario == "SCENARIO_5_COMPARISON":
                 response = await scenario_five(request, db=db)
         return response
@@ -399,6 +401,38 @@ async def scenario_three(request: ChatRequest, db: AsyncSession, found_key) -> C
     
 #     return ChatResponse(message=final_answer)
     
+    
+    
+async def scenario_four_in_memory(request: ChatRequest) -> ChatResponse:
+    user_message = request.messages[-1].content.strip()
+    chat_id = request.chat_id
+
+    # 1. Get chat history from memory
+    history = chat_histories.get(chat_id, [])
+
+    # 2. Call LLM with proper history format
+    llm_response = await simple_openai_gpt_request(
+        message=user_message,  # Send only the latest message
+        systemprompt=SCENARIO_FOUR_PROMPTS["system_prompt"],
+        model="gpt-4.1-mini",
+        chat_history=history  # Pass the list of previous messages directly
+    )
+
+    # 3. Process response and update history in memory
+    response_text = llm_response.strip()
+    history.append({"role": "user", "content": user_message})
+    history.append({"role": "assistant", "content": response_text})
+    chat_histories[chat_id] = history
+
+    # 4. Check for final key
+    if response_text.startswith("FINAL_KEY:"):
+        key = response_text.replace("FINAL_KEY:", "").strip()
+        # Optional: Clean up memory after conversation ends
+        if chat_id in chat_histories:
+            del chat_histories[chat_id]
+        return ChatResponse(member_random_keys=[key])
+    else:
+        return ChatResponse(message=response_text)
     
     
 async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
