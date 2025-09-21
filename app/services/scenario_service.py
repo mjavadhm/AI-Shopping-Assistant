@@ -58,21 +58,23 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
             found_key = None
             #with full text search
             # scenario, essential_keywords, descriptive_keywords = await classify_scenario(request)
-            
-            # logger.info(f"CLASSIFIED SCENARIO: {scenario}, ESSENTIAL: {essential_keywords}, DESCRIPTIVE: {descriptive_keywords}")
-            # found_key = await find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db, essential_keywords=essential_keywords, descriptive_keywords=descriptive_keywords)
-            # if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
-            #     raise HTTPException(status_code=404, detail="No products found matching the keywords.")
+            scenario, product_name = await classify_scenario_for_embed(request)
+            logger.info(f"CLASSIFIED SCENARIO: {scenario}, product_name: {product_name}")
+            if scenario not in  ["SCENARIO_5_COMPARISON","SCENARIO_4_CONVERSATIONAL_SEARCH"]:
+                found_key = await find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db, product_name=product_name)
+            if not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
+                raise HTTPException(status_code=404, detail="No products found matching the keywords.")
+            raise HTTPException(status_code=404, detail="No products found matching the keywords.")
             #------------------------------------------
             #with keyword simple
-            scenario = await old_classify_scenario(request)
-            if scenario:
-                http_request.state.scenario = scenario
-            logger.info(f"CLASSIFIED SCENARIO: {scenario}")
-            if scenario not in  ["SCENARIO_5_COMPARISON","SCENARIO_4_CONVERSATIONAL_SEARCH"]:
+            # scenario = await old_classify_scenario(request)
+            # if scenario:
+            #     http_request.state.scenario = scenario
+            # logger.info(f"CLASSIFIED SCENARIO: {scenario}")
+            # if scenario not in  ["SCENARIO_5_COMPARISON","SCENARIO_4_CONVERSATIONAL_SEARCH"]:
                 
-                found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
-                logger.info(f"found_key: {found_key}")
+            #     found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
+            #     logger.info(f"found_key: {found_key}")
             #-----------------------------------------------------
             #with embed
             #---------------------------------------------
@@ -82,7 +84,7 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
             if scenario == "SCENARIO_4_CONVERSATIONAL_SEARCH":
                 response = await scenario_four_in_memory(request)
             # if scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
-            #     found_key = await find_exact_product_name_service_and_embed(user_message = request.messages[-1].content.strip(), possible_product_name=product_name)
+                # found_key = await find_exact_product_name_service_and_embed(user_message = request.messages[-1].content.strip(), possible_product_name=product_name)
             elif not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
                     raise HTTPException(status_code=404, detail="No products found matching the keywords.")
             
@@ -670,56 +672,102 @@ async def get_calculate_code(user_request):
     logger.info(f"-> Generated Python code from LLM:\n{llm_response_code}")
     return llm_response_code
     
-    
-    
-async def find_exact_product_name_service(user_message: str, db: AsyncSession, essential_keywords: List[str], descriptive_keywords: List[str]) -> Optional[str]:
-    product_names = await repository.search_products_by_keywords(
-        db=db,
-        essential_keywords=essential_keywords,
-        descriptive_keywords=descriptive_keywords
-    )
-    if not product_names:
-        product_names =  json.dumps({"status": "not_found", "message": """No products found matching the keywords.\ntry using some essential_keywords in descriptive_keywords or change keywords if still getting this error"""})
-    
-    if len(product_names) > 100:
-        logger.warning(f"""Too many results ({len(product_names)})""")
-        product_names = json.dumps({"status": """too_many_results\nThe search is too general.\n try using some specific keywords in essential_keywords or adding new keywords to your search.""", "count": len(product_names)})
-    system_prompt = SELECT_BEST_MATCH_PROMPT.get("main_prompt_template", "").format(
+
+async def find_exact_product_name_service(user_message: str, db: AsyncSession, possible_product_name: str) -> Optional[str]:
+    if possible_product_name:
+        product_names = await repository.find_similar_products(
+            db=db,
+            product_name=possible_product_name,
+        )
+    else:
+        product_names = "use function to search"
+    system_prompt = SELECT_BEST_MATCH_PROMPT.get("new_main_prompt_template_embed", "").format(
         user_query = user_message,
         search_results_str=product_names
     )
-    tool_handler = ToolHandler(db=db)
     llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
         message="",
         systemprompt=system_prompt,
-        model="gpt-4.1-nano",
-        tools=FIRST_SCENARIO_TOOLS
+        model="gpt-4.1-mini",
+        tools=EMBED_FIRST_SCENARIO_TOOLS
     )
     tools_answer = []
     for _ in range(5):
-        if tool_calls:
-            tools_answer = await tool_handler.handle_tool_call(tool_calls, tools_answer)
-            
+        if tool_calls: 
+            for tool_call in tool_calls:
+                function_arguments = tool_call.function.arguments
+                function_name = tool_call.function.name
+                parsed_arguments = json.loads(function_arguments)
+                logger.info(f"function_name = {function_name}\nfunction_arguments: {str(function_arguments)}")
+                possible_product_name = parsed_arguments.get("product_name")
+                product_names = await repository.find_similar_products(db, possible_product_name)
+                tools_answer.append({"role": "assistant", "tool_calls": [{"id": tool_call.id, "type": "function", "function": {"name": function_name, "arguments": function_arguments}}]})
+                tools_answer.append({"role": "tool", "tool_call_id": tool_call.id, "content": product_names})
             llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
                 message=user_message,
                 systemprompt=system_prompt,
                 model="gpt-4.1-mini",
-                tools=FIRST_SCENARIO_TOOLS,
+                tools=EMBED_FIRST_AGENT_TOOLS,
                 tools_answer=tools_answer
             )
         else:
             break
     
     logger.info(f"llm_response: {llm_response}")
-    p_name = llm_response.split('\n')[0]
-    p_name = p_name.strip()
-    logger.info(f"cleaned name:{p_name}")
-    found_keys = await repository.search_product_by_name(db=db, product_name=p_name)
-    if not found_keys:
-        logger.info("No matching product keys found.trying to search by like.")
-        found_keys = await repository.get_product_rkey_by_name_like(db=db, product_name=p_name)
-    logger.info(f"found_keys: {found_keys}")
-    return found_keys[0] if found_keys else None
+    found_key = llm_response.split('\n')[0]
+    found_key = found_key.strip()
+    logger.info(f"found_key:{found_key}")
+    return found_key
+
+    
+# async def find_exact_product_name_service(user_message: str, db: AsyncSession, essential_keywords: List[str], descriptive_keywords: List[str]) -> Optional[str]:
+#     product_names = await repository.search_products_by_keywords(
+#         db=db,
+#         essential_keywords=essential_keywords,
+#         descriptive_keywords=descriptive_keywords
+#     )
+#     if not product_names:
+#         product_names =  json.dumps({"status": "not_found", "message": """No products found matching the keywords.\ntry using some essential_keywords in descriptive_keywords or change keywords if still getting this error"""})
+    
+#     if len(product_names) > 100:
+#         logger.warning(f"""Too many results ({len(product_names)})""")
+#         product_names = json.dumps({"status": """too_many_results\nThe search is too general.\n try using some specific keywords in essential_keywords or adding new keywords to your search.""", "count": len(product_names)})
+#     system_prompt = SELECT_BEST_MATCH_PROMPT.get("main_prompt_template", "").format(
+#         user_query = user_message,
+#         search_results_str=product_names
+#     )
+#     tool_handler = ToolHandler(db=db)
+#     llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
+#         message="",
+#         systemprompt=system_prompt,
+#         model="gpt-4.1-nano",
+#         tools=FIRST_SCENARIO_TOOLS
+#     )
+#     tools_answer = []
+#     for _ in range(5):
+#         if tool_calls:
+#             tools_answer = await tool_handler.handle_tool_call(tool_calls, tools_answer)
+            
+#             llm_response, tool_calls = await simple_openai_gpt_request_with_tools(
+#                 message=user_message,
+#                 systemprompt=system_prompt,
+#                 model="gpt-4.1-mini",
+#                 tools=FIRST_SCENARIO_TOOLS,
+#                 tools_answer=tools_answer
+#             )
+#         else:
+#             break
+    
+#     logger.info(f"llm_response: {llm_response}")
+#     p_name = llm_response.split('\n')[0]
+#     p_name = p_name.strip()
+#     logger.info(f"cleaned name:{p_name}")
+#     found_keys = await repository.search_product_by_name(db=db, product_name=p_name)
+#     if not found_keys:
+#         logger.info("No matching product keys found.trying to search by like.")
+#         found_keys = await repository.get_product_rkey_by_name_like(db=db, product_name=p_name)
+#     logger.info(f"found_keys: {found_keys}")
+#     return found_keys[0] if found_keys else None
 
 async def old_find_exact_product_name_service(user_message: str, db: AsyncSession, previous_keywords = None, search_result=None, user_query=None ) -> Optional[str]:
     system_prompt = OLD_FIND_PRODUCT_PROMPTS.get("v2_prompt", "").format(

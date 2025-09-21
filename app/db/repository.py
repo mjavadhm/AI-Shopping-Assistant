@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from typing import List, Optional
+from typing import List, Dict, Optional
 from . import models
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from sqlalchemy.orm import joinedload
 from sqlalchemy.dialects.postgresql import to_tsquery
 
@@ -35,6 +35,50 @@ async def search_product_by_name(db: AsyncSession, product_name: str) -> Optiona
         
     return None
 
+async def find_similar_products(db: AsyncSession, product_name: str) -> List[Dict[str, str]]:
+    """
+    Asynchronously finds the top 10 most similar products by their Persian name.
+
+    This function finds products with similar names to the search term,
+    filters for a reasonable similarity threshold, and returns the top 10
+    most relevant results.
+
+    Args:
+        db: The SQLAlchemy AsyncSession to use for the query.
+        product_name: The search term to look for in the product names.
+
+    Returns:
+        A list of dictionaries, each containing the 'id' (random_key) and
+        'product_name' (persian_name) of a matching product, or an empty
+        list if no matches are found.
+    """
+    similarity_score = func.similarity(models.BaseProduct.persian_name, product_name)
+
+    # 1. Select both columns: random_key and persian_name
+    query = (
+        select(
+            models.BaseProduct.random_key,
+            models.BaseProduct.persian_name
+        )
+        .where(
+            models.BaseProduct.persian_name.op("%")(product_name),
+            similarity_score > 0.1
+        )
+        .order_by(similarity_score.desc())
+        .limit(10)
+    )
+
+    result = await db.execute(query)
+    
+    # 2. Process the rows into a list of dictionaries
+    # We use result.all() instead of result.scalars() because we have multiple columns
+    products_found = [
+        {'id': row.random_key, 'product_name': row.persian_name}
+        for row in result.all()
+    ]
+    
+    # 3. Return the list of dictionaries
+    return products_found
 
 async def search_products_by_keywords(
     db: AsyncSession, 
