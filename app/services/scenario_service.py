@@ -414,10 +414,13 @@ async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     first_product, second_product, code_to_get_info = product_data
     
     
-
+    logger.info(f"First product key: {first_product.random_key if first_product else 'None'}")
     product_1_details = get_product_detail(db, first_product, code_to_get_info)
-
+    logger.info(f"product_1_details: {product_1_details}")
+    
+    logger.info(f"Second product key: {second_product.random_key if second_product else 'None'}")
     product_2_details = get_product_detail(db, second_product, code_to_get_info)
+    logger.info(f"product_2_details: {product_2_details}")
 
     comparison_system_prompt = SCENARIO_FIVE_PROMPTS.get("comparison_prompt").format(
         user_query=user_message,
@@ -457,13 +460,14 @@ async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
 
 async def get_product_detail(db, product, code_to_get_info):
     sellers_context = await get_sellers_context(db, product.random_key)
-    
+    logger.info(f"product id:{product.random_key}\ncontext:{str(sellers_context)}\n\ncode_to_get_info:{code_to_get_info}")
     try:
 
         local_scope = {}
         exec(code_to_get_info, globals(), local_scope)
 
         calculator_func = local_scope.get('calculate')
+        
 
         if callable(calculator_func):
     
@@ -495,6 +499,7 @@ async def get_product_detail(db, product, code_to_get_info):
             "persian_name": product.persian_name,
             "features": product.extra_features or {}
         }, ensure_ascii=False, indent=2)
+        
     
     return product_details
 
