@@ -625,7 +625,7 @@ async def get_calculate_code(user_request):
         llm_response_code = llm_response_code.split("```python")[1].split("```")[0].strip()
 
     logger.info(f"-> Generated Python code from LLM:\n{llm_response_code}")
-    
+    return llm_response_code
     
     
     
