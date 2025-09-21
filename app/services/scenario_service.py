@@ -422,7 +422,9 @@ async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     comparison_system_prompt = SCENARIO_FIVE_PROMPTS.get("comparison_prompt").format(
         user_query=user_message,
         product_1_details=product_1_details,
-        product_2_details=product_2_details
+        product_2_details=product_2_details,
+        product_1_key = first_product.random_key,
+        product_2_key = second_product.random_key
     )
 
     final_response_text = await simple_openai_gpt_request(
