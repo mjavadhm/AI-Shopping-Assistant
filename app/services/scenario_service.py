@@ -614,18 +614,19 @@ async def scenario_4_state_3(user_message, db, session: Scenario4State):
         raise HTTPException(status_code=404, detail="No products found in previous steps.")
     
     system_prompt = SCENARIO_FOUR_PROMPTS["final_recommendation"]
-    input_for_clarification = {
-        "user_response": user_message, # The user's last message that was unclear
-        "seller_options": str(filters_json) # The list of sellers you showed them
-    }
+    input_for_selection = {
+    "user_response": user_message,
+    "product_options": str(products_with_sellers), # Correct key and data
+    "chat_history": str(history)
+}
     llm_response = await simple_openai_gpt_request(
         message=json.dumps(input_for_clarification),
         systemprompt=system_prompt,
-        model="gpt-4.1-mini",
+        model="gpt-4.1",
     )
     logger.info(f"llm_response in state 3:\n{str(llm_response)}")
 
-    json_from_llm = llm_response.split("```json")[1].split("```")[0].strip()
+    json_from_llm = parse_llm_json_response(llm_response)
 
         
     clarification_data = json.loads(json_from_llm)
@@ -639,7 +640,28 @@ async def scenario_4_state_3(user_message, db, session: Scenario4State):
 
     
     return [member_key], session, True
-    
+
+
+def parse_llm_json_response(response_str: str) -> dict:
+    """
+    A robust function to parse JSON from an LLM response,
+    handling both raw JSON and JSON wrapped in markdown code fences.
+    """
+    try:
+        # First, check if the response is wrapped in markdown fences
+        if "```json" in response_str:
+            # Extract the content between the fences
+            json_part = response_str.split("```json")[1].split("```")[0].strip()
+            return json.loads(json_part)
+        else:
+            # If no fences, assume the whole string is the JSON
+            return json.loads(response_str.strip())
+    except (json.JSONDecodeError, IndexError) as e:
+        print(f"Error parsing JSON from LLM response: {e}")
+        # Return an empty dict or raise an exception as needed
+        return {}
+
+
 async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
     logger.info("Initiating Scenario 5: Product Comparison.")
