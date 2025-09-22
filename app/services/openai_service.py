@@ -145,7 +145,7 @@ async def analyze_image(user_message, base64_image, prompt, model="gpt-4.1"):
                     "image_url": base64_image,
                 },
             ],
-        }],
+        }]
         
         # Combine history messages with the current message
         all_messages = [system_message] + [current_message]
