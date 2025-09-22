@@ -133,9 +133,6 @@ async def simple_openai_gpt_request_with_tools(
     
 async def analyze_image(user_message, base64_image, prompt, model="gpt-4.1"):
     try:
-        # --- کد جدید: اضافه کردن لاگر برای بررسی حجم ---
-        logger.info(f"Length of base64 image data: {len(base64_image)}")
-        # --- پایان کد جدید ---
 
         system_message = {"role": "system", "content": prompt}
         
@@ -145,9 +142,7 @@ async def analyze_image(user_message, base64_image, prompt, model="gpt-4.1"):
                 {"type": "input_text", "text": user_message},
                 {
                     "type": "input_image",
-                    "image_url": {
-                        "url": base64_image
-                    },
+                    "image_url": base64_image,
                 },
             ],
         }]
@@ -162,7 +157,7 @@ async def analyze_image(user_message, base64_image, prompt, model="gpt-4.1"):
         description = response.choices[0].message.content
         input_tokens = response.usage.prompt_tokens if hasattr(response, 'usage') else 0
         output_tokens = response.usage.completion_tokens if hasattr(response, 'usage') else 0
-        input_tokens, output_tokens, cost = calculate_gpt_cost(int(input_tokens), int(output_tokens), 'gpt-4o')        
+        input_tokens, output_tokens, cost = calculate_gpt_cost(int(input_tokens), int(output_tokens), model)
         logger.info(f"--------------------------\nmodel: {model}\ncost:{cost}\n--------------------------")
         return description
     
