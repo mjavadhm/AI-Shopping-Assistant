@@ -615,12 +615,12 @@ async def scenario_4_state_3(user_message, db, session: Scenario4State):
     
     system_prompt = SCENARIO_FOUR_PROMPTS["final_recommendation"]
     input_for_selection = {
-    "user_response": user_message,
-    "product_options": str(products_with_sellers), # Correct key and data
-    "chat_history": str(history)
-}
+        "user_response": user_message,
+        "product_options": str(products_with_sellers), # Correct key and data
+        "chat_history": str(history)
+    }
     llm_response = await simple_openai_gpt_request(
-        message=json.dumps(input_for_clarification),
+        message=json.dumps(input_for_selection),
         systemprompt=system_prompt,
         model="gpt-4.1",
     )
