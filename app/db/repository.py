@@ -61,20 +61,19 @@ async def find_products_with_aggregated_sellers(
     if "price_max" in structured_filters and structured_filters["price_max"] is not None:
         seller_filters.append(models.Member.price <= structured_filters["price_max"])
     if "has_warranty" in structured_filters and structured_filters["has_warranty"]:
-        seller_filters.append(models.Member.has_warranty == True)
+        seller_filters.append(models.Shop.has_warranty == True)
     if "city_name" in structured_filters and structured_filters["city_name"]:
         seller_filters.append(models.City.name == structured_filters["city_name"])
 
     # این CTE فروشندگان را به همراه اطلاعات کاملشان انتخاب و فیلتر می‌کند
     filtered_sellers_cte = (
         select(
-            models.Member.base_product_id,
+            models.Member.base_random_key,
             # ساخت یک آبجکت JSON برای هر فروشنده
             func.jsonb_build_object(
                 'member_key', models.Member.random_key,
                 'price', models.Member.price,
-                'has_warranty', models.Member.has_warranty,
-                'shop_name', models.Shop.name,
+                'has_warranty', models.Shop.has_warranty,
                 'shop_score', models.Shop.score,
                 'city', models.City.name
             ).label("seller_data")
@@ -99,8 +98,8 @@ async def find_products_with_aggregated_sellers(
             func.jsonb_agg(filtered_sellers_cte.c.seller_data).label("sellers")
         )
         # اتصال LEFT JOIN به CTE تا کالاهایی که فروشنده منطبق ندارند حذف نشوند
-        .join(filtered_sellers_cte, models.BaseProduct.id == filtered_sellers_cte.c.base_product_id, isouter=True)
-        .group_by(models.BaseProduct.id) # گروه بندی بر اساس کالا برای تجمیع صحیح
+        .join(filtered_sellers_cte, models.BaseProduct.random_key == filtered_sellers_cte.c.base_random_key, isouter=True)
+        .group_by(models.BaseProduct.random_key) # گروه بندی بر اساس کالا برای تجمیع صحیح
     )
 
     # اعمال فیلتر جستجوی متنی به کوئری اصلی
