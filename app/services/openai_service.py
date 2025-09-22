@@ -157,7 +157,7 @@ async def analyze_image(user_message, base64_image, prompt, model="gpt-4.1"):
         description = response.choices[0].message.content
         input_tokens = response.usage.prompt_tokens if hasattr(response, 'usage') else 0
         output_tokens = response.usage.completion_tokens if hasattr(response, 'usage') else 0
-        input_tokens, output_tokens, cost = await calculate_gpt_cost(int(input_tokens), int(output_tokens), 'gpt-4o')        
+        input_tokens, output_tokens, cost = calculate_gpt_cost(int(input_tokens), int(output_tokens), 'gpt-4o')        
         logger.info(f"--------------------------\nmodel: {model}\ncost:{cost}\n--------------------------")
         return description
     
