@@ -419,7 +419,7 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
     # 1. Get chat history from memory
     response =  ChatResponse(message="سلام اگه امکانش هست کامل توضیح بدید چی میخواید تا بتونم بهتر کمکتون کنم\nدرباره فروشنده گارانتی یا قیمت")
     history = chat_histories.get(chat_id, [])
-    state = scenario_4_state.get(state, None)
+    state = scenario_4_state.get(chat_id, None)
     if state == None:
         state = 1
         scenario_4_state[chat_id] = 1
