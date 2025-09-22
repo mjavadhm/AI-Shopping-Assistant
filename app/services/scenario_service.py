@@ -628,9 +628,8 @@ async def scenario_4_state_3(user_message, db, session: Scenario4State):
 
     json_from_llm = parse_llm_json_response(llm_response)
 
-        
-    clarification_data = json.loads(json_from_llm)
-    final_user_message = clarification_data.get("selected_member_key")
+    
+    final_user_message = json_from_llm.get("selected_member_key")
     if not final_user_message:
         session.state = 2
         response, session = await scenario_4_state_2(user_message, db, session)
