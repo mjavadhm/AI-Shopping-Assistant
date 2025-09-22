@@ -717,34 +717,51 @@ async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
         # اگر LLM فرمت را رعایت نکرد، کل متنش را به عنوان پاسخ برمی‌گردانیم
         return ChatResponse(message=final_response_text)
 
-
+import aiohttp
+import base64
+from mimetypes import guess_type
 async def scenario_six(request: ChatRequest) -> ChatResponse:
     """
     Handles Scenario Six: Object detection in an image.
     """
     logger.info("Initiating Scenario 6: Image Object Detection.")
-    
-    text_message = ""
-    base64_image = ""
 
-    # Extract text and image content from messages
+    text_message = ""
+    image_url = ""
+
     for message in request.messages:
         if message.type == "text":
             text_message = message.content
         elif message.type == "image":
-            base64_image = message.content
+            image_url = message.content # <-- حالا اینجا فقط URL را ذخیره می‌کنیم
 
-    if not base64_image:
+    if not image_url:
         raise HTTPException(status_code=400, detail="Image content not found in the request.")
 
-    # Get the prompt for object detection
+    # --- کد جدید برای دانلود و انکود تصویر ---
+    base64_image_data = ""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(image_url) as resp:
+                if resp.status == 200:
+                    image_bytes = await resp.read()
+                    base64_encoded = base64.b64encode(image_bytes).decode('utf-8')
+                    # حدس زدن نوع فایل (jpeg, png, etc.)
+                    mime_type = guess_type(image_url)[0] or "image/jpeg"
+                    base64_image_data = f"data:{mime_type};base64,{base64_encoded}"
+                else:
+                    logger.error(f"Failed to download image from {image_url}, status: {resp.status}")
+                    raise HTTPException(status_code=400, detail="Could not download the image from the provided URL.")
+    except Exception as e:
+        logger.error(f"Error processing image URL: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred while processing the image.")
+    # --- پایان کد جدید ---
+
     prompt = SCENARIO_SIX_PROMPTS.get("main_prompt", "Identify the main object in the image.")
 
-    # Call the vision model service
-    logger.info(f"{base64_image}\n{text_message}")
     object_name = await analyze_image(
         user_message=text_message,
-        base64_image=base64_image,
+        base64_image=base64_image_data, # <-- حالا داده‌ی Base64 را ارسال می‌کنیم
         prompt=prompt
     )
 
