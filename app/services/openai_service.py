@@ -139,10 +139,12 @@ async def analyze_image(user_message, base64_image, prompt, model="gpt-4.1"):
         current_message = [{
             "role": "user",
             "content": [
-                {"type": "input_text", "text": user_message},
+                {"type": "text", "text": user_message},
                 {
-                    "type": "input_image",
-                    "image_url": base64_image,
+                    "type": "image_url",
+                    "image_url": {
+                        "url": base64_image
+                    }
                 },
             ],
         }]
