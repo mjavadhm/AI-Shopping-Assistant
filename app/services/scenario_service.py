@@ -22,6 +22,7 @@ from app.db import repository
 from app.core.logger import logger
 
 chat_histories = {}
+scenario_4_state = {}
 
 async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_request: Request) -> ChatResponse:
     """
@@ -411,14 +412,28 @@ async def scenario_three(request: ChatRequest, db: AsyncSession, found_key) -> C
     
     
     
-async def scenario_four_in_memory(request: ChatRequest) -> ChatResponse:
+async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
     chat_id = request.chat_id
 
     # 1. Get chat history from memory
+    response =  ChatResponse(message="سلام اگه امکانش هست کامل توضیح بدید چی میخواید تا بتونم بهتر کمکتون کنم\nدرباره فروشنده گارانتی یا قیمت")
     history = chat_histories.get(chat_id, [])
-
-    # 2. Call LLM with proper history format
+    state = scenario_4_state.get(state, None)
+    if state == None:
+        state = 1
+        scenario_4_state[chat_id] = 1
+    if state == 1 or not state:
+        response = await scenario_4_state_1(user_message, history, chat_id)
+        scenario_4_state[chat_id] += 1
+    elif state == 2:
+        response = await scenario_4_state_2(user_message, db, history, chat_id)
+        
+    return response
+    
+    
+async def scenario_4_state_1(user_message, history, chat_id):
+    
     llm_response = await simple_openai_gpt_request(
         message=user_message,  # Send only the latest message
         systemprompt=SCENARIO_FOUR_PROMPTS["system_prompt"],
@@ -442,6 +457,76 @@ async def scenario_four_in_memory(request: ChatRequest) -> ChatResponse:
     else:
         return ChatResponse(message=response_text)
     
+async def scenario_4_state_2(user_message, db, history, chat_id):
+    history.append({"role": "user", "content": user_message})
+    chat_histories[chat_id] = history
+
+    system_prompt_extract = SCENARIO_FOUR_PROMPTS["extract_info"].format(
+        chat_history=str(history)
+    )
+    
+    
+    llm_response_str = await simple_openai_gpt_request(
+        message="",
+        systemprompt=system_prompt_extract,
+        model="gpt-4.1-mini", 
+    )
+
+    
+    try:
+        
+        json_str = llm_response_str.split("```json")[1].split("```")[0].strip()
+        filters_json = json.loads(json_str)
+        
+        
+        products_with_sellers = await repository.find_products_with_aggregated_sellers(db, filters_json)
+
+    except (json.JSONDecodeError, IndexError) as e:
+        
+        print(f"Error parsing LLM response: {e}")
+        
+        final_message = "متاسفانه در حال حاضر امکان پردازش درخواست شما وجود ندارد. لطفاً کمی دیگر دوباره تلاش کنید."
+        history.append({"role": "assistant", "content": final_message})
+        chat_histories[chat_id] = history
+        return {"message": final_message}
+
+    
+    
+    final_message = ""
+    
+    if not products_with_sellers:
+        
+        
+        system_prompt_no_result = SCENARIO_FOUR_PROMPTS["no_result_response"].format(
+            chat_history=str(history)
+        )
+        final_message = await simple_openai_gpt_request(
+            message="",
+            systemprompt=system_prompt_no_result,
+            model="gpt-4.1-mini",
+        )
+    else:
+        
+        
+        system_prompt_with_results = SCENARIO_FOUR_PROMPTS["final_recommendation"].format(
+            chat_history=str(history),
+            search_results=json.dumps(products_with_sellers, ensure_ascii=False, indent=2)
+        )
+        
+        
+        final_message = await simple_openai_gpt_request(
+            message="",
+            systemprompt=system_prompt_with_results,
+            model="gpt-4.1",
+        )
+
+    
+    history.append({"role": "assistant", "content": final_message})
+    chat_histories[chat_id] = history
+    
+    
+    
+    return ChatResponse(message=final_message.strip())
     
 async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     user_message = request.messages[-1].content.strip()

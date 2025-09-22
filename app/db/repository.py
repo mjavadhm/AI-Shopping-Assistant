@@ -2,7 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Dict, Optional
 from . import models
-from sqlalchemy import and_, func
+from sqlalchemy import select, func, and_, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import joinedload
 from sqlalchemy.dialects.postgresql import to_tsquery
 
@@ -34,6 +35,103 @@ async def search_product_by_name(db: AsyncSession, product_name: str) -> Optiona
         return keys
         
     return None
+
+async def find_products_with_aggregated_sellers(
+    db: AsyncSession,
+    filters_json: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """
+    کالاها را پیدا کرده و تمام فروشندگان منطبق با فیلتر را در یک فیلد JSON تجمیع می‌کند.
+
+    Args:
+        db: سشن SQLAlchemy AsyncSession.
+        filters_json: دیکشنری JSON تولید شده توسط LLM.
+
+    Returns:
+        لیستی از کالاهای پایه که هر کدام شامل یک کلید 'sellers' با لیستی از فروشندگان است.
+    """
+    search_query_text = filters_json.get("search_query")
+    structured_filters = filters_json.get("structured_filters", {})
+
+    # ---------- ۱. ساخت یک زیرکوئری (CTE) برای فیلتر کردن فروشندگان ----------
+    
+    seller_filters = []
+    if "price_min" in structured_filters and structured_filters["price_min"] is not None:
+        seller_filters.append(models.Member.price >= structured_filters["price_min"])
+    if "price_max" in structured_filters and structured_filters["price_max"] is not None:
+        seller_filters.append(models.Member.price <= structured_filters["price_max"])
+    if "has_warranty" in structured_filters and structured_filters["has_warranty"]:
+        seller_filters.append(models.Member.has_warranty == True)
+    if "city_name" in structured_filters and structured_filters["city_name"]:
+        seller_filters.append(models.City.name == structured_filters["city_name"])
+
+    # این CTE فروشندگان را به همراه اطلاعات کاملشان انتخاب و فیلتر می‌کند
+    filtered_sellers_cte = (
+        select(
+            models.Member.base_product_id,
+            # ساخت یک آبجکت JSON برای هر فروشنده
+            func.jsonb_build_object(
+                'member_key', models.Member.random_key,
+                'price', models.Member.price,
+                'has_warranty', models.Member.has_warranty,
+                'shop_name', models.Shop.name,
+                'shop_score', models.Shop.score,
+                'city', models.City.name
+            ).label("seller_data")
+        )
+        .join(models.Shop, models.Member.shop_id == models.Shop.id)
+        .join(models.City, models.Shop.city_id == models.City.id)
+        .where(and_(*seller_filters))
+        .cte("filtered_sellers")
+    )
+
+    # ---------- ۲. ساخت کوئری اصلی ----------
+    
+    similarity_score = None
+    if search_query_text:
+        similarity_score = func.similarity(models.BaseProduct.persian_name, search_query_text)
+
+    query = (
+        select(
+            models.BaseProduct.persian_name,
+            models.BaseProduct.random_key,
+            # تجمیع تمام آبجکت‌های JSON فروشندگان در یک آرایه JSON
+            func.jsonb_agg(filtered_sellers_cte.c.seller_data).label("sellers")
+        )
+        # اتصال LEFT JOIN به CTE تا کالاهایی که فروشنده منطبق ندارند حذف نشوند
+        .join(filtered_sellers_cte, models.BaseProduct.id == filtered_sellers_cte.c.base_product_id, isouter=True)
+        .group_by(models.BaseProduct.id) # گروه بندی بر اساس کالا برای تجمیع صحیح
+    )
+
+    # اعمال فیلتر جستجوی متنی به کوئری اصلی
+    if search_query_text:
+        query = query.where(
+            models.BaseProduct.persian_name.op("%")(search_query_text),
+            similarity_score > 0.1
+        ).order_by(similarity_score.desc())
+    else:
+        # اگر جستجوی متنی نبود، می‌توان بر اساس معیار دیگری مرتب کرد
+        # مثلاً کالاهایی که بیشترین تعداد فروشنده را دارند
+        query = query.order_by(func.count(filtered_sellers_cte.c.seller_data).desc())
+
+    # اعمال محدودیت نهایی
+    query = query.limit(10)
+    
+    # ---------- ۳. اجرای کوئری و فرمت کردن خروجی ----------
+    result = await db.execute(query)
+    
+    products_with_sellers = [
+        {
+            'product_name': row.persian_name,
+            'base_product_key': row.random_key,
+            # اگر کالایی هیچ فروشنده منطبقی نداشت، sellers برابر null خواهد بود
+            'sellers': row.sellers or [] 
+        }
+        for row in result.all()
+    ]
+
+    return products_with_sellers
+
 
 async def find_similar_products(db: AsyncSession, product_name: str) -> List[Dict[str, str]]:
     """
