@@ -41,14 +41,8 @@ async def find_products_with_aggregated_sellers(
     filters_json: Dict[str, Any]
 ) -> List[Dict[str, Any]]:
     """
-    کالاها را پیدا کرده و تمام فروشندگان منطبق با فیلتر را در یک فیلد JSON تجمیع می‌کند.
-
-    Args:
-        db: سشن SQLAlchemy AsyncSession.
-        filters_json: دیکشنری JSON تولید شده توسط LLM.
-
-    Returns:
-        لیستی از کالاهای پایه که هر کدام شامل یک کلید 'sellers' با لیستی از فروشندگان است.
+    کالاها را پیدا کرده و فقط آنهایی را برمی‌گرداند که حداقل یک فروشنده منطبق با فیلترها دارند.
+    سپس تمام فروشندگان منطبق را در یک فیلد JSON تجمیع می‌کند.
     """
     search_query_text = filters_json.get("search_query")
     structured_filters = filters_json.get("structured_filters", {})
@@ -56,6 +50,7 @@ async def find_products_with_aggregated_sellers(
     # ---------- ۱. ساخت یک زیرکوئری (CTE) برای فیلتر کردن فروشندگان ----------
     
     seller_filters = []
+    # ... (بخش فیلتر کردن فروشندگان بدون تغییر باقی می‌ماند)
     if "price_min" in structured_filters and structured_filters["price_min"] is not None:
         seller_filters.append(models.Member.price >= structured_filters["price_min"])
     if "price_max" in structured_filters and structured_filters["price_max"] is not None:
@@ -65,11 +60,9 @@ async def find_products_with_aggregated_sellers(
     if "city_name" in structured_filters and structured_filters["city_name"]:
         seller_filters.append(models.City.name == structured_filters["city_name"])
 
-    # این CTE فروشندگان را به همراه اطلاعات کاملشان انتخاب و فیلتر می‌کند
     filtered_sellers_cte = (
         select(
-            models.Member.base_random_key,
-            # ساخت یک آبجکت JSON برای هر فروشنده
+            models.Member.base_product_id,
             func.jsonb_build_object(
                 'member_key', models.Member.random_key,
                 'price', models.Member.price,
@@ -94,26 +87,20 @@ async def find_products_with_aggregated_sellers(
         select(
             models.BaseProduct.persian_name,
             models.BaseProduct.random_key,
-            # تجمیع تمام آبجکت‌های JSON فروشندگان در یک آرایه JSON
             func.jsonb_agg(filtered_sellers_cte.c.seller_data).label("sellers")
         )
-        # اتصال LEFT JOIN به CTE تا کالاهایی که فروشنده منطبق ندارند حذف نشوند
-        .join(filtered_sellers_cte, models.BaseProduct.random_key == filtered_sellers_cte.c.base_random_key, isouter=True)
-        .group_by(models.BaseProduct.random_key) # گروه بندی بر اساس کالا برای تجمیع صحیح
+        .join(filtered_sellers_cte, models.BaseProduct.random_key == filtered_sellers_cte.c.base_random_key)
+        .group_by(models.BaseProduct.random_key)
     )
 
-    # اعمال فیلتر جستجوی متنی به کوئری اصلی
     if search_query_text:
         query = query.where(
             models.BaseProduct.persian_name.op("%")(search_query_text),
             similarity_score > 0.1
         ).order_by(similarity_score.desc())
     else:
-        # اگر جستجوی متنی نبود، می‌توان بر اساس معیار دیگری مرتب کرد
-        # مثلاً کالاهایی که بیشترین تعداد فروشنده را دارند
         query = query.order_by(func.count(filtered_sellers_cte.c.seller_data).desc())
 
-    # اعمال محدودیت نهایی
     query = query.limit(10)
     
     # ---------- ۳. اجرای کوئری و فرمت کردن خروجی ----------
@@ -123,8 +110,7 @@ async def find_products_with_aggregated_sellers(
         {
             'product_name': row.persian_name,
             'base_product_key': row.random_key,
-            # اگر کالایی هیچ فروشنده منطبقی نداشت، sellers برابر null خواهد بود
-            'sellers': row.sellers or [] 
+            'sellers': row.sellers or []
         }
         for row in result.all()
     ]

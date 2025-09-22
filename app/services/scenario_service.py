@@ -7,9 +7,9 @@ import json
 import json
 
 from app.schemas.chat import ChatRequest, ChatResponse
-from app.services.openai_service import simple_openai_gpt_request, simple_openai_gpt_request_with_tools
+from app.services.openai_service import simple_openai_gpt_request, simple_openai_gpt_request_with_tools, analyze_image
 from app.llm.prompts import (FIND_PRODUCT_PROMPTS, FIRST_AGENT_PROMPT, OLD_FIND_PRODUCT_PROMPTS,
-    ROUTER_PROMPT, SCENARIO_FIVE_PROMPTS, SCENARIO_FOUR_PROMPTS, SCENARIO_THREE_PROMPTS,
+    ROUTER_PROMPT, SCENARIO_FIVE_PROMPTS, SCENARIO_FOUR_PROMPTS, SCENARIO_THREE_PROMPTS, SCENARIO_SIX_PROMPTS,
     SCENARIO_TWO_PROMPTS, SELECT_BEST_MATCH_PROMPT)
 from app.db.session import get_db
 from app.db.session import AsyncSessionLocal
@@ -34,6 +34,9 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
         ChatResponse: The response for Scenario One or None if not matched.
     """
     try:
+        if any(msg.type == 'image' for msg in request.messages):
+            http_request.state.scenario = "SCENARIO_6_IMAGE_OBJECT_DETECTION"
+            return await scenario_six(request)
         last_message = request.messages[-1].content.strip()
         response = None
         scenario = "SANITY_CHECK"
@@ -486,51 +489,116 @@ async def scenario_4_state_2(user_message, db, history, chat_id):
         print(f"Error parsing LLM response: {e}")
         
         final_message = "متاسفانه در حال حاضر امکان پردازش درخواست شما وجود ندارد. لطفاً کمی دیگر دوباره تلاش کنید."
-        history.append({"role": "assistant", "content": final_message})
         chat_histories[chat_id] = history
-        return {"message": final_message}
+        return ChatResponse(message=final_message)
 
     
     
-    final_message = ""
+    navigator_prompt = SCENARIO_FOUR_PROMPTS["state_2_path"] # نام پرامپت جدید شما
+    input_for_navigator_prompt = {}
     
-    if not products_with_sellers:
+    # --- مرحله تحلیل نتایج ---
+
+    # PATH A: جستجو موفق بود (بین ۱ تا ۵ نتیجه)
+    if 1 <= len(products_with_sellers) :
+        logger.info("Path A: Success, 1-5 results found.")
+        input_for_navigator_prompt = {
+            "action_mode": "HANDLE_SUCCESSFUL_RESULTS",
+            "search_results": products_with_sellers, # فرض می‌کنیم فرمت این لیست مناسب است
+            "last_search_parameters": filters_json,
+            "chat_history": str(history)
+        }
+
+    # PATH B: جستجو ناموفق بود (هیچ نتیجه‌ای یافت نشد)
+    elif len(products_with_sellers) == 0:
+        logger.info("Path B, Attempt 1: No results found. Generating recovery query.")
         
+        # **تغییر ۱: فقط کوئری قبلی را به LLM می‌دهیم، نه کل فیلترها را**
+        # این کار باعث می‌شود LLM فقط روی تغییر دادن خود کوئری تمرکز کند.
+        original_query = filters_json.get("search_query", "")
         
-        system_prompt_no_result = SCENARIO_FOUR_PROMPTS["no_result_response"].format(
-            chat_history=str(history)
-        )
-        final_message = await simple_openai_gpt_request(
-            message="",
-            systemprompt=system_prompt_no_result,
+        input_for_recovery_query = {
+            "action_mode": "GENERATE_RECOVERY_QUERY",
+            "search_results": [],
+            "last_search_parameters": { # فقط شامل کوئری قبلی است
+                "search_query": original_query 
+            },
+            "chat_history": str(history)
+        }
+        
+        # فراخوانی LLM برای گرفتن کوئری جدید
+        recovery_response_str = await simple_openai_gpt_request(
+            message=json.dumps(input_for_recovery_query),
+            systemprompt=navigator_prompt,
             model="gpt-4.1-mini",
         )
+        recovery_response_json = json.loads(recovery_response_str)
+        
+        new_search_query = recovery_response_json.get("new_search_query")
+        
+        if new_search_query:
+            logger.info(f"Retrying search with new query: '{new_search_query}'")
+            
+            # **تغییر ۲: برای جستجوی دوم، فیلترهای ساختاری اصلی را نگه می‌داریم**
+            # و فقط کوئری جدید را جایگزین کوئری قبلی می‌کنیم.
+            updated_filters_for_db = {
+                "search_query": new_search_query,
+                "structured_filters": filters_json.get("structured_filters", {})
+            }
+            
+            # جستجوی مجدد در دیتابیس با کوئری جدید و فیلترهای دست‌نخورده
+            second_attempt_products = await repository.find_products_with_aggregated_sellers(db, updated_filters_for_db)
+    
+            # اگر تلاش دوم موفق بود
+            if 1 <= len(second_attempt_products) <= 5:
+                logger.info("Path B, Recovery Success: Found results on second attempt.")
+                input_for_navigator_prompt = {
+                    "action_mode": "HANDLE_SUCCESSFUL_RESULTS",
+                    "search_results": second_attempt_products,
+                    "last_search_parameters": updated_filters_for_db,
+                    "chat_history": str(history)
+                }
+            # اگر تلاش دوم هم ناموفق بود
+            else:
+                logger.info("Path B, Attempt 2: Still no results. Generating clarification message.")
+                input_for_navigator_prompt = {
+                    "action_mode": "GENERATE_CLARIFICATION_MESSAGE",
+                    "search_results": [],
+                    "last_search_parameters": updated_filters_for_db,
+                    "chat_history": str(history)
+                }
+        else:
+            # اگر LLM نتوانست کوئری جدید بسازد، به کاربر پیام خطا می‌دهیم
+            logger.warning("LLM failed to generate a recovery query.")
+            input_for_navigator_prompt = {
+                "action_mode": "GENERATE_CLARIFICATION_MESSAGE",
+                "search_results": [],
+                "last_search_parameters": filters_json, # از همان فیلترهای اولیه استفاده می‌کنیم
+                "chat_history": str(history)
+            }
+            
+    # حالت اضافه: نتایج خیلی زیاد است
+    else: # len(products_with_sellers) > 5
+        logger.info("Path C: Too many results found. Asking user to narrow down.")
+
+        final_message = "تعداد زیادی محصول با این مشخصات پیدا شد! لطفاً مشخصات دقیق‌تری مثل بازه قیمت یا رنگ مورد نظرتان را بگویید تا بتوانم بهتر کمکتان کنم."
         history.append({"role": "assistant", "content": final_message})
         chat_histories[chat_id] = history
-        
-        
-        
-        return ChatResponse(message=final_message.strip())
-    else:
-        
-        
-        system_prompt_with_results = SCENARIO_FOUR_PROMPTS["final_recommendation"].format(
-            chat_history=str(history),
-            search_results=json.dumps(products_with_sellers, ensure_ascii=False, indent=2)
-        )
-        
-        
-        final_message = await simple_openai_gpt_request(
-            message="",
-            systemprompt=system_prompt_with_results,
-            model="gpt-4.1",
-        )
-        history.append({"role": "assistant", "content": final_message})
-        chat_histories[chat_id] = history
-        
-        
-        
-        return ChatResponse(member_random_keys=[final_message.strip()])
+        return ChatResponse(message=final_message)
+
+    # فراخوانی نهایی LLM برای ساخت پیام کاربر
+    final_response_str = await simple_openai_gpt_request(
+        message=json.dumps(input_for_navigator_prompt), # ورودی باید JSON باشد
+        systemprompt=navigator_prompt,
+        model="gpt-4.1-mini",
+    )
+    
+    final_response_json = json.loads(final_response_str)
+    final_message = final_response_json.get("message", "متاسفانه مشکلی پیش آمده.") # استخراج پیام نهایی
+
+    history.append({"role": "assistant", "content": final_message})
+    chat_histories[chat_id] = history
+    return ChatResponse(message=final_message)
     
     
     
@@ -589,6 +657,38 @@ async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
         logger.error(f"Could not parse LLM response for comparison: {e}")
         # اگر LLM فرمت را رعایت نکرد، کل متنش را به عنوان پاسخ برمی‌گردانیم
         return ChatResponse(message=final_response_text)
+
+
+async def scenario_six(request: ChatRequest) -> ChatResponse:
+    """
+    Handles Scenario Six: Object detection in an image.
+    """
+    logger.info("Initiating Scenario 6: Image Object Detection.")
+    
+    text_message = ""
+    base64_image = ""
+
+    # Extract text and image content from messages
+    for message in request.messages:
+        if message.type == "text":
+            text_message = message.content
+        elif message.type == "image":
+            base64_image = message.content
+
+    if not base64_image:
+        raise HTTPException(status_code=400, detail="Image content not found in the request.")
+
+    # Get the prompt for object detection
+    prompt = SCENARIO_SIX_PROMPTS.get("main_prompt", "Identify the main object in the image.")
+
+    # Call the vision model service
+    object_name = await analyze_image(
+        user_message=text_message,
+        base64_image=base64_image,
+        prompt=prompt
+    )
+
+    return ChatResponse(message=object_name.strip())
 
 
 async def get_product_detail(db, product, code_to_get_info):
