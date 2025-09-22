@@ -741,13 +741,14 @@ async def scenario_six(request: ChatRequest) -> ChatResponse:
     prompt = SCENARIO_SIX_PROMPTS.get("main_prompt", "Identify the main object in the image.")
 
     # Call the vision model service
+    logger.info(f"{base64_image}\n{text_message}")
     object_name = await analyze_image(
         user_message=text_message,
         base64_image=base64_image,
         prompt=prompt
     )
 
-    return ChatResponse(message=object_name.strip())
+    return ChatResponse(message=object_name)
 
 
 async def get_product_detail(db, product, code_to_get_info):

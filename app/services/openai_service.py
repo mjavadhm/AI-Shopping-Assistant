@@ -149,6 +149,7 @@ async def analyze_image(user_message, base64_image, prompt, model="gpt-4.1"):
         
         # Combine history messages with the current message
         all_messages = [system_message] + [current_message]
+        logger.info(str(all_messages))
         response = await async_client.chat.completions.create(
             model=model,
             messages=all_messages
