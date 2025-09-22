@@ -83,7 +83,7 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
             # scenario, product_name = await classify_scenario_for_embed(request)
             # logger.info(f"CLASSIFIED SCENARIO: {scenario}, product_name: {product_name}")
             if scenario == "SCENARIO_4_CONVERSATIONAL_SEARCH":
-                response = await scenario_four_in_memory(request)
+                response = await scenario_four_in_memory(request,db)
             # if scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
                 # found_key = await find_exact_product_name_service_and_embed(user_message = request.messages[-1].content.strip(), possible_product_name=product_name)
             elif not found_key and scenario in ["SCENARIO_1_DIRECT_SEARCH", "SCENARIO_2_FEATURE_EXTRACTION", "SCENARIO_3_SELLER_INFO"]:
