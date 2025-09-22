@@ -62,7 +62,7 @@ async def find_products_with_aggregated_sellers(
 
     filtered_sellers_cte = (
         select(
-            models.Member.base_product_id,
+            models.Member.base_random_key,
             func.jsonb_build_object(
                 'member_key', models.Member.random_key,
                 'price', models.Member.price,

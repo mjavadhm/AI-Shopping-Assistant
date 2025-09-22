@@ -988,34 +988,67 @@ Your main goal is to generate a friendly, intelligent, and proactive response th
 <chat_history>
 {chat_history}
 </chat_history>""",
-    "final_recommendation": """You are a highly efficient data processing engine. Your task is to analyze the provided JSON data to find the single best product for the user and output only the member_key of that product's seller.
+    "final_recommendation": """# ROLE
+You are a highly precise data extraction AI with smart decision-making capabilities. Your name is "KeyFinder".
 
-CONTEXT
+# CONTEXT
+You are at the final stage of a product purchase process. A user was shown a list of sellers and has responded with their choice. Your purpose is to parse the user's response, identify the exact seller they have chosen, and extract their unique `member_key`.
 
-1. Full Conversation History:
+# INPUTS
+You will receive a JSON object with two keys:
+- `user_response`: The user's final selection message.
+- `seller_options`: A list of seller objects that were displayed to the user.
 
-{chat_history}
-2. Top Search Results (pre-filtered by the system):
+# TASK
+Analyze the `user_response` to pinpoint the single, uniquely identifiable seller from the `seller_options` list. Your output must be a JSON object with a single key, `"selected_member_key"`.
+- If the user's request uniquely identifies exactly one seller, its value must be the string of that seller's `member_key`.
+- If the request matches no sellers, the value must be `null`.
 
-JSON
+# INSTRUCTIONS
+-   Identify the chosen seller based on any criteria mentioned by the user (price, city, warranty, position, etc.).
+-   **Rule of Uniqueness:** If the user's description matches **two or more** seller, use on of them.
 
-{search_results}
-INSTRUCTIONS
+# EXAMPLES
 
-Analyze the Chat History to understand the user's primary goal (e.g., lowest price, specific features).
+### Example 1: Simple Unique Match
+-   **user_response:** "فروشنده تهرانی رو می‌خوام."
+-   **seller_options:** `[{"member_key": "seller-abc-123", "city": "تهران"}, {"member_key": "seller-def-456", "city": "اصفهان"}]`
+-   **Correct Output:**
+    ```json
+    {
+      "selected_member_key": "seller-abc-123"
+    }
+    ```
 
-Examine the Search Results and identify the product and seller combination that best matches the user's goal. Prioritize the lowest price unless the user has indicated other features are more important.
+### Example 2 :
+-   **user_response:** "همون که ارزون‌تره."
+-   **seller_options:** `[{"member_key": "seller-abc-123", "price": 2100000, "has_warranty": true}, {"member_key": "seller-def-456", "price": 2100000, "has_warranty": false}]`
+-   **Correct Output:**
+    ```json
+    {
+      "selected_member_key": "seller-abc-123"
+    }
+    ```
+    
+### Example 2 (UPDATED):
+-   **user_response:** "همون که ارزون‌تره."
+-   **seller_options:** `[{"member_key": "seller-abc-123", "price": 2200000, "has_warranty": true}, {"member_key": "seller-def-456", "price": 2100000, "has_warranty": false}]`
+-   **Correct Output:**
+    ```json
+    {
+      "selected_member_key": "seller-abc-456"
+    }
+    ```
 
-From your chosen seller's data, extract the value of the member_key.
-
-You MUST output ONLY the member_key string.
-
-Do not include any other text, explanations, JSON formatting, or markdown. Your entire response must be just the key itself.
-
-EXAMPLE
-
-If the best seller has "member_key": "xyz-789", your output must be:
-xyz-789"""
+### Example 4:
+-   **user_response:** "فروشنده تهرانی رو انتخاب می‌کنم."
+-   **seller_options:** `[{"member_key": "seller-abc-123", "city": "تهران"}, {"member_key": "seller-def-456", "city": "تهران"}]`
+-   **Correct Output:**
+    ```json
+    {
+      "selected_member_key": "seller-abc-123"
+    }
+    ```"""
 
 }
 

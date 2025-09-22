@@ -161,8 +161,7 @@ async def analyze_image(user_message, base64_image, prompt, model="gpt-4.1"):
         return description
     
     except Exception as e:
-        error_message = f"Error in vision for user {user_id}: {str(e)}"
-        logger.error(error_message)
+        logger.error(e)
     
 def get_embeddings(texts, model="text-embedding-3-small", dimensions=512):
     response = client.embeddings.create(

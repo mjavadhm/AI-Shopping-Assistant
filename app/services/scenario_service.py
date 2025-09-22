@@ -1,11 +1,12 @@
 import asyncio
 from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Optional, Tuple 
+from typing import List, Optional, Tuple ,Dict
 import json
 # import aiohttp
 import json
 
+from app.schemas.state import Scenario4State
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.openai_service import simple_openai_gpt_request, simple_openai_gpt_request_with_tools, analyze_image
 from app.llm.prompts import (FIND_PRODUCT_PROMPTS, FIRST_AGENT_PROMPT, OLD_FIND_PRODUCT_PROMPTS,
@@ -21,8 +22,7 @@ from app.core.utils import parse_llm_response_to_number
 from app.db import repository
 from app.core.logger import logger
 
-chat_histories = {}
-scenario_4_state = {}
+scenario_4_sessions: Dict[str, Scenario4State] = {}
 
 async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_request: Request) -> ChatResponse:
     """
@@ -420,23 +420,33 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
     chat_id = request.chat_id
 
     # 1. Get chat history from memory
-    response =  ChatResponse(message="سلام اگه امکانش هست کامل توضیح بدید چی میخواید تا بتونم بهتر کمکتون کنم\nدرباره فروشنده گارانتی یا قیمت")
-    history = chat_histories.get(chat_id, [])
-    state = scenario_4_state.get(chat_id, None)
-    if state == None:
-        state = 1
-        scenario_4_state[chat_id] = 1
-    if state == 1 or not state:
-        response = await scenario_4_state_1(user_message, history, chat_id)
-        scenario_4_state[chat_id] += 1
-    elif state == 2:
-        response = await scenario_4_state_2(user_message, db, history, chat_id)
+    response =  "سلام اگه امکانش هست کامل توضیح بدید چی میخواید تا بتونم بهتر کمکتون کنم\nدرباره فروشنده گارانتی یا قیمت"
+    session = scenario_4_sessions.get(chat_id)
+    if not session:
+        session = Scenario4State()
+        scenario_4_sessions[chat_id] = session
+    
+    session.chat_history.append({"role": "user", "content": user_message})
+
+    if session.state == 1 or not session.state:
+        response, session = await scenario_4_state_1(user_message, session)
+
+    elif session.state == 2:
+        response, session = await scenario_4_state_2(user_message, db, session)
+    elif session.state == 3:
+        response, session, is_done = await scenario_4_state_3(user_message, db, session)
+        if is_done:
+            return ChatResponse(member_random_keys=response)
         
-    return response
+    session.chat_history.append({"role": "assistant", "content": response})
+    scenario_4_sessions[chat_id] = session
     
     
-async def scenario_4_state_1(user_message, history, chat_id):
+    return ChatResponse(message=response)
     
+    
+async def scenario_4_state_1(user_message, session):
+    history = session.chat_history
     llm_response = await simple_openai_gpt_request(
         message=user_message,  # Send only the latest message
         systemprompt=SCENARIO_FOUR_PROMPTS["system_prompt"],
@@ -446,23 +456,13 @@ async def scenario_4_state_1(user_message, history, chat_id):
 
     # 3. Process response and update history in memory
     response_text = llm_response.strip()
-    history.append({"role": "user", "content": user_message})
-    history.append({"role": "assistant", "content": response_text})
-    chat_histories[chat_id] = history
+    session.state = 2
 
-    # 4. Check for final key
-    if response_text.startswith("FINAL_KEY:"):
-        key = response_text.replace("FINAL_KEY:", "").strip()
-        # Optional: Clean up memory after conversation ends
-        if chat_id in chat_histories:
-            del chat_histories[chat_id]
-        return ChatResponse(member_random_keys=[key])
-    else:
-        return ChatResponse(message=response_text)
-    
-async def scenario_4_state_2(user_message, db, history, chat_id):
-    history.append({"role": "user", "content": user_message})
-    chat_histories[chat_id] = history
+    return response_text, session
+
+async def scenario_4_state_2(user_message, db, session: Scenario4State):
+
+    history = session.chat_history
 
     system_prompt_extract = SCENARIO_FOUR_PROMPTS["extract_info"].format(
         chat_history=str(history)
@@ -483,17 +483,18 @@ async def scenario_4_state_2(user_message, db, history, chat_id):
         
         
         products_with_sellers = await repository.find_products_with_aggregated_sellers(db, filters_json)
+        session.products_with_sellers = products_with_sellers
         logger.info(f"products_with_sellers:\n{str(products_with_sellers)}")
     except (json.JSONDecodeError, IndexError) as e:
         
         print(f"Error parsing LLM response: {e}")
         
         final_message = "متاسفانه در حال حاضر امکان پردازش درخواست شما وجود ندارد. لطفاً کمی دیگر دوباره تلاش کنید."
-        chat_histories[chat_id] = history
-        return ChatResponse(message=final_message)
+        
+        return final_message, session
 
     
-    
+    session.filters_json = filters_json
     navigator_prompt = SCENARIO_FOUR_PROMPTS["state_2_path"] # نام پرامپت جدید شما
     input_for_navigator_prompt = {}
     
@@ -508,6 +509,7 @@ async def scenario_4_state_2(user_message, db, history, chat_id):
             "last_search_parameters": filters_json,
             "chat_history": str(history)
         }
+        session.state = 3
 
     # PATH B: جستجو ناموفق بود (هیچ نتیجه‌ای یافت نشد)
     elif len(products_with_sellers) == 0:
@@ -548,9 +550,9 @@ async def scenario_4_state_2(user_message, db, history, chat_id):
             
             # جستجوی مجدد در دیتابیس با کوئری جدید و فیلترهای دست‌نخورده
             second_attempt_products = await repository.find_products_with_aggregated_sellers(db, updated_filters_for_db)
-    
+            session.products_with_sellers = second_attempt_products
             # اگر تلاش دوم موفق بود
-            if 1 <= len(second_attempt_products) <= 5:
+            if 1 <= len(second_attempt_products):
                 logger.info("Path B, Recovery Success: Found results on second attempt.")
                 input_for_navigator_prompt = {
                     "action_mode": "HANDLE_SUCCESSFUL_RESULTS",
@@ -558,6 +560,7 @@ async def scenario_4_state_2(user_message, db, history, chat_id):
                     "last_search_parameters": updated_filters_for_db,
                     "chat_history": str(history)
                 }
+                session.state = 3
             # اگر تلاش دوم هم ناموفق بود
             else:
                 logger.info("Path B, Attempt 2: Still no results. Generating clarification message.")
@@ -583,8 +586,8 @@ async def scenario_4_state_2(user_message, db, history, chat_id):
 
         final_message = "تعداد زیادی محصول با این مشخصات پیدا شد! لطفاً مشخصات دقیق‌تری مثل بازه قیمت یا رنگ مورد نظرتان را بگویید تا بتوانم بهتر کمکتان کنم."
         history.append({"role": "assistant", "content": final_message})
-        chat_histories[chat_id] = history
-        return ChatResponse(message=final_message)
+        
+        return final_message, session
 
     # فراخوانی نهایی LLM برای ساخت پیام کاربر
     final_response_str = await simple_openai_gpt_request(
@@ -593,14 +596,49 @@ async def scenario_4_state_2(user_message, db, history, chat_id):
         model="gpt-4.1-mini",
     )
     
+    
     final_response_json = json.loads(final_response_str)
     final_message = final_response_json.get("message", "متاسفانه مشکلی پیش آمده.") # استخراج پیام نهایی
 
     history.append({"role": "assistant", "content": final_message})
-    chat_histories[chat_id] = history
-    return ChatResponse(message=final_message)
+    
+    return final_message, session
     
     
+async def scenario_4_state_3(user_message, db, session: Scenario4State):
+    history = session.chat_history
+    products_with_sellers = session.products_with_sellers
+    filters_json = session.filters_json
+    logger.info(f"products_with_sellers in state 3:\n{str(products_with_sellers)}")
+    if not products_with_sellers:
+        raise HTTPException(status_code=404, detail="No products found in previous steps.")
+    
+    system_prompt = SCENARIO_FOUR_PROMPTS["final_recommendation"]
+    input_for_clarification = {
+        "user_response": user_message, # The user's last message that was unclear
+        "seller_options": str(filters_json) # The list of sellers you showed them
+    }
+    llm_response = await simple_openai_gpt_request(
+        message=json.dumps(input_for_clarification),
+        systemprompt=system_prompt,
+        model="gpt-4.1-mini",
+    )
+    logger.info(f"llm_response in state 3:\n{str(llm_response)}")
+
+    json_from_llm = llm_response.split("```json")[1].split("```")[0].strip()
+
+        
+    clarification_data = json.loads(json_from_llm)
+    final_user_message = clarification_data.get("selected_member_key")
+    if not final_user_message:
+        session.state = 2
+        response, session = await scenario_4_state_2(user_message, db, session)
+        return response, session, False
+
+    member_key = final_user_message
+
+    
+    return [member_key], session, True
     
 async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
