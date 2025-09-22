@@ -472,7 +472,7 @@ async def scenario_4_state_2(user_message, db, history, chat_id):
         model="gpt-4.1-mini", 
     )
 
-    
+    logger.info(f"\n{llm_response_str}")
     try:
         
         json_str = llm_response_str.split("```json")[1].split("```")[0].strip()
@@ -480,7 +480,7 @@ async def scenario_4_state_2(user_message, db, history, chat_id):
         
         
         products_with_sellers = await repository.find_products_with_aggregated_sellers(db, filters_json)
-
+        logger.info(f"products_with_sellers:\n{str(products_with_sellers)}")
     except (json.JSONDecodeError, IndexError) as e:
         
         print(f"Error parsing LLM response: {e}")
@@ -505,6 +505,12 @@ async def scenario_4_state_2(user_message, db, history, chat_id):
             systemprompt=system_prompt_no_result,
             model="gpt-4.1-mini",
         )
+        history.append({"role": "assistant", "content": final_message})
+        chat_histories[chat_id] = history
+        
+        
+        
+        return ChatResponse(message=final_message.strip())
     else:
         
         
@@ -519,14 +525,14 @@ async def scenario_4_state_2(user_message, db, history, chat_id):
             systemprompt=system_prompt_with_results,
             model="gpt-4.1",
         )
-
+        history.append({"role": "assistant", "content": final_message})
+        chat_histories[chat_id] = history
+        
+        
+        
+        return ChatResponse(member_random_keys=[final_message.strip()])
     
-    history.append({"role": "assistant", "content": final_message})
-    chat_histories[chat_id] = history
     
-    
-    
-    return ChatResponse(message=final_message.strip())
     
 async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
