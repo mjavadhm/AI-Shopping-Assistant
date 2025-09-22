@@ -133,6 +133,9 @@ async def simple_openai_gpt_request_with_tools(
     
 async def analyze_image(user_message, base64_image, prompt, model="gpt-4.1"):
     try:
+        # --- کد جدید: اضافه کردن لاگر برای بررسی حجم ---
+        logger.info(f"Length of base64 image data: {len(base64_image)}")
+        # --- پایان کد جدید ---
 
         system_message = {"role": "system", "content": prompt}
         
@@ -142,7 +145,9 @@ async def analyze_image(user_message, base64_image, prompt, model="gpt-4.1"):
                 {"type": "input_text", "text": user_message},
                 {
                     "type": "input_image",
-                    "image_url": base64_image,
+                    "image_url": {
+                        "url": base64_image
+                    },
                 },
             ],
         }]
