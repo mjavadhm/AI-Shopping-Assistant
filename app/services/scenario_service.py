@@ -53,7 +53,7 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
         
         elif history:
             scenario = "SCENARIO_4_CONVERSATIONAL_SEARCH"
-            response = await scenario_four_in_memory(request)
+            response = await scenario_four_in_memory(request, db)
 
         else:
             found_key = None
