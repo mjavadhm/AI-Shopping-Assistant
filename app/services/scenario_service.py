@@ -34,13 +34,13 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
         ChatResponse: The response for Scenario One or None if not matched.
     """
     try:
+        response = None
+        scenario = "SANITY_CHECK"
+        chat_id = request.chat_id
         if any(msg.type == 'image' for msg in request.messages):
             http_request.state.scenario = "SCENARIO_6_IMAGE_OBJECT_DETECTION"
             return await scenario_six(request)
         last_message = request.messages[-1].content.strip()
-        response = None
-        scenario = "SANITY_CHECK"
-        chat_id = request.chat_id
         session = scenario_4_sessions.get(chat_id)
         # --- Scenario Zero: Sanity Checks ---
         if last_message == "ping":
@@ -72,9 +72,9 @@ async def check_scenario_one(request: ChatRequest, db: AsyncSession, http_reques
             #------------------------------------------
             #with keyword simple
             # scenario = await old_classify_scenario(request)
-            # if scenario:
-            #     http_request.state.scenario = scenario
-            # logger.info(f"CLASSIFIED SCENARIO: {scenario}")
+            if scenario:
+                http_request.state.scenario = scenario
+            logger.info(f"CLASSIFIED SCENARIO: {scenario}")
             # if scenario not in  ["SCENARIO_5_COMPARISON","SCENARIO_4_CONVERSATIONAL_SEARCH"]:
                 
             #     found_key = await old_find_exact_product_name_service(user_message = request.messages[-1].content.strip(), db=db)
@@ -422,6 +422,9 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
     # 1. Get chat history from memory
     response =  "سلام اگه امکانش هست کامل توضیح بدید چی میخواید تا بتونم بهتر کمکتون کنم\nدرباره فروشنده گارانتی یا قیمت"
     session = scenario_4_sessions.get(chat_id)
+    if len(session.chat_history) > 4:
+        response, session, is_ok = await scenario_4_emergancy_state(user_message, db, session)
+        return ChatResponse(message=response)
     if not session:
         session = Scenario4State()
         scenario_4_sessions[chat_id] = session
@@ -495,12 +498,11 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
 
     
     session.filters_json = filters_json
-    navigator_prompt = SCENARIO_FOUR_PROMPTS["state_2_path"] # نام پرامپت جدید شما
+    navigator_prompt = SCENARIO_FOUR_PROMPTS["state_2_path"]
     input_for_navigator_prompt = {}
     
-    # --- مرحله تحلیل نتایج ---
 
-    # PATH A: جستجو موفق بود (بین ۱ تا ۵ نتیجه)
+    # PATH A
     if 1 <= len(products_with_sellers) :
         logger.info("Path A: Success, 1-5 results found.")
         input_for_navigator_prompt = {
@@ -511,24 +513,22 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
         }
         session.state = 3
 
-    # PATH B: جستجو ناموفق بود (هیچ نتیجه‌ای یافت نشد)
+    # PATH B
     elif len(products_with_sellers) == 0:
         logger.info("Path B, Attempt 1: No results found. Generating recovery query.")
+
         
-        # **تغییر ۱: فقط کوئری قبلی را به LLM می‌دهیم، نه کل فیلترها را**
-        # این کار باعث می‌شود LLM فقط روی تغییر دادن خود کوئری تمرکز کند.
         original_query = filters_json.get("search_query", "")
         
         input_for_recovery_query = {
             "action_mode": "GENERATE_RECOVERY_QUERY",
             "search_results": [],
-            "last_search_parameters": { # فقط شامل کوئری قبلی است
+            "last_search_parameters": {
                 "search_query": original_query 
             },
             "chat_history": str(history)
         }
         
-        # فراخوانی LLM برای گرفتن کوئری جدید
         recovery_response_str = await simple_openai_gpt_request(
             message=json.dumps(input_for_recovery_query),
             systemprompt=navigator_prompt,
@@ -541,17 +541,14 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
         if new_search_query:
             logger.info(f"Retrying search with new query: '{new_search_query}'")
             
-            # **تغییر ۲: برای جستجوی دوم، فیلترهای ساختاری اصلی را نگه می‌داریم**
-            # و فقط کوئری جدید را جایگزین کوئری قبلی می‌کنیم.
+
             updated_filters_for_db = {
                 "search_query": new_search_query,
                 "structured_filters": filters_json.get("structured_filters", {})
             }
             
-            # جستجوی مجدد در دیتابیس با کوئری جدید و فیلترهای دست‌نخورده
             second_attempt_products = await repository.find_products_with_aggregated_sellers(db, updated_filters_for_db)
             session.products_with_sellers = second_attempt_products
-            # اگر تلاش دوم موفق بود
             if 1 <= len(second_attempt_products):
                 logger.info("Path B, Recovery Success: Found results on second attempt.")
                 input_for_navigator_prompt = {
@@ -561,7 +558,6 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
                     "chat_history": str(history)
                 }
                 session.state = 3
-            # اگر تلاش دوم هم ناموفق بود
             else:
                 logger.info("Path B, Attempt 2: Still no results. Generating clarification message.")
                 input_for_navigator_prompt = {
@@ -571,16 +567,14 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
                     "chat_history": str(history)
                 }
         else:
-            # اگر LLM نتوانست کوئری جدید بسازد، به کاربر پیام خطا می‌دهیم
             logger.warning("LLM failed to generate a recovery query.")
             input_for_navigator_prompt = {
                 "action_mode": "GENERATE_CLARIFICATION_MESSAGE",
                 "search_results": [],
-                "last_search_parameters": filters_json, # از همان فیلترهای اولیه استفاده می‌کنیم
+                "last_search_parameters": filters_json,
                 "chat_history": str(history)
             }
             
-    # حالت اضافه: نتایج خیلی زیاد است
     else: # len(products_with_sellers) > 5
         logger.info("Path C: Too many results found. Asking user to narrow down.")
 
@@ -589,16 +583,15 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
         
         return final_message, session
 
-    # فراخوانی نهایی LLM برای ساخت پیام کاربر
     final_response_str = await simple_openai_gpt_request(
-        message=json.dumps(input_for_navigator_prompt), # ورودی باید JSON باشد
+        message=json.dumps(input_for_navigator_prompt),
         systemprompt=navigator_prompt,
         model="gpt-4.1-mini",
     )
     
     
     final_response_json = json.loads(final_response_str)
-    final_message = final_response_json.get("message", "متاسفانه مشکلی پیش آمده.") # استخراج پیام نهایی
+    final_message = final_response_json.get("message", "متاسفانه مشکلی پیش آمده.")
 
     history.append({"role": "assistant", "content": final_message})
     
@@ -634,6 +627,42 @@ async def scenario_4_state_3(user_message, db, session: Scenario4State):
         session.state = 2
         response, session = await scenario_4_state_2(user_message, db, session)
         return response, session, False
+
+    member_key = final_user_message
+
+    
+    return [member_key], session, True
+
+async def scenario_4_state_4(user_message, db, session: Scenario4State):
+    # This state can be implemented if needed for further interactions
+    pass
+
+async def scenario_4_emergancy_state(user_message, db, session):
+    history = session.chat_history
+    products_with_sellers = session.products_with_sellers
+    filters_json = session.filters_json
+    logger.info(f"products_with_sellers in state 3:\n{str(products_with_sellers)}")
+    if not products_with_sellers:
+        raise HTTPException(status_code=404, detail="No products found in previous steps.")
+    
+    system_prompt = SCENARIO_FOUR_PROMPTS["emergancy_response"]
+    input_for_selection = {
+        "user_response": user_message,
+        "product_options": str(products_with_sellers), # Correct key and data
+        "chat_history": str(history)
+    }
+    llm_response = await simple_openai_gpt_request(
+        message=json.dumps(input_for_selection),
+        systemprompt=system_prompt,
+        model="gpt-4.1",
+    )
+    logger.info(f"llm_response in state 3:\n{str(llm_response)}")
+
+    json_from_llm = parse_llm_json_response(llm_response)
+
+    
+    final_user_message = json_from_llm.get("selected_member_key")
+
 
     member_key = final_user_message
 
@@ -823,11 +852,12 @@ async def find_two_product(user_message, db_session_factory):
 async def find_p_in_fifth_scenario(user_message, index, db_session_factory)->str:
     async with db_session_factory() as db:
         if index == 1:
-            index_str = 'first'
+            index_str = 'اول'
         elif index == 2:
-            index_str = 'second'
+            index_str = 'دوم'
         else:
             raise ValueError("index should be 1 or 2")
+        user_message = f"مقایسه زیر رو ببین\n\n{user_message}\n\n در این مقایسهدمبال محصول {index_str} هستم."
         user_message = f"find the {index_str} product in this compare request:\n\n{user_message}"
         #embed
         # found_key = await find_exact_product_name_service_and_embed(user_message, None)
