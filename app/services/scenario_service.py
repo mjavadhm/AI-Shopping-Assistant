@@ -434,7 +434,7 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
         return ChatResponse(message=response)
     
     if session.state == 1 or not session.state:
-        response, session = await scenario_4_state_1(user_message, session)
+        response, updated_session = await scenario_4_state_1(user_message, session)
 
     elif session.state == 2:
         response, updated_session = await scenario_4_state_2(user_message, db, session)
