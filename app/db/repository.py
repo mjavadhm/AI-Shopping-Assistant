@@ -87,6 +87,7 @@ async def find_products_with_aggregated_sellers(
         select(
             models.BaseProduct.persian_name,
             models.BaseProduct.random_key,
+            models.BaseProduct.extra_features,
             func.jsonb_agg(filtered_sellers_cte.c.seller_data).label("sellers")
         )
         .join(filtered_sellers_cte, models.BaseProduct.random_key == filtered_sellers_cte.c.base_random_key)
@@ -109,6 +110,7 @@ async def find_products_with_aggregated_sellers(
     products_with_sellers = [
         {
             'product_name': row.persian_name,
+            'product_features': row.extra_features,
             'base_product_key': row.random_key,
             'sellers': row.sellers or []
         }
