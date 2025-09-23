@@ -421,13 +421,13 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
 
     # 1. Get chat history from memory
     response =  "سلام اگه امکانش هست کامل توضیح بدید چی میخواید تا بتونم بهتر کمکتون کنم\nدرباره فروشنده گارانتی یا قیمت"
+    session = scenario_4_sessions.get(chat_id)
     if not session:
         session = Scenario4State()
         scenario_4_sessions[chat_id] = session
     
     session.chat_history.append({"role": "user", "content": user_message})
 
-    session = scenario_4_sessions.get(chat_id)
     logger.info(f"len(session.chat_history): {len(session.chat_history)}")
     if len(session.chat_history) > 4:
         response, session, is_ok = await scenario_4_emergancy_state(user_message, db, session)
