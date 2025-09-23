@@ -430,18 +430,20 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
 
     logger.info(f"len(session.chat_history): {len(session.chat_history)}")
     if len(session.chat_history) > 4:
-        response, session, is_ok = await scenario_4_emergancy_state(user_message, db, session)
+        response, updated_session, is_ok = await scenario_4_emergancy_state(user_message, db, session)
         return ChatResponse(message=response)
     
     if session.state == 1 or not session.state:
         response, session = await scenario_4_state_1(user_message, session)
 
     elif session.state == 2:
-        response, session = await scenario_4_state_2(user_message, db, session)
+        response, updated_session = await scenario_4_state_2(user_message, db, session)
     elif session.state == 3:
-        response, session, is_done = await scenario_4_state_3(user_message, db, session)
+        response, updated_session, is_done = await scenario_4_state_3(user_message, db, session)
         if is_done:
+            
             return ChatResponse(member_random_keys=response)
+    session = updated_session 
         
     session.chat_history.append({"role": "assistant", "content": response})
     scenario_4_sessions[chat_id] = session
