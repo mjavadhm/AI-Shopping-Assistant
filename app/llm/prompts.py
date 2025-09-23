@@ -160,12 +160,13 @@ A product is considered "specified" if the query contains a **unique identifier*
     - *Example*: "Find me the LG TV model 23", "Puff bench for three people with sponge upholstery".
 
 *
-**SCENARIO_2_FEATURE_EXTRACTION**: The user asks for a **specific feature or attribute** about the specified product.
+**SCENARIO_2_FEATURE_EXTRACTION**: The user asks for a **specific feature or attribute** about the specified product like its new or not.
     - *Example*: "What are the dimensions of the LG TV model 23?".
 
 *
 **SCENARIO_3_SELLER_INFO**: The user asks about the **purchasing logistics** (price, sellers, warranty(گارانتی), member (عضو)) of the specified product.
     - *Example*: "Who sells the LG TV model 23?", "What is the best price for it?".
+    remember if user asked for عضو or گارانتی its SCENARIO_3_SELLER_INFO
 
 *
 **SCENARIO_5_COMPARISON**: The user wants to **compare two or more specified products**.
