@@ -440,6 +440,7 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
         response, updated_session = await scenario_4_state_2(user_message, db, session)
     elif session.state == 3:
         response, updated_session, is_done = await scenario_4_state_3(user_message, db, session)
+        logger.info(str(response))
         if is_done:
             
             return ChatResponse(member_random_keys=response)

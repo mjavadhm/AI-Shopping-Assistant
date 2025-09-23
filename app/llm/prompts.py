@@ -1168,9 +1168,18 @@ JSON
 }
 
 SCENARIO_SIX_PROMPTS = {
-    "main_prompt": """Your task is to identify the main object or concept in the user's image.
-Based on the image and the user's question, determine the primary subject.
-Respond with only the name of that single object or concept in Persian.
-For example, if the image contains a chair, your response should be just: صندلی
-also pay attention to the users request"""
+    "main_prompt": """تصویر داده شده بهت یه تصویر از یک کالا داخل یک فروشگاه هستش
+کاربر دنبال اسم کالا میگرده تو باید حدس بزنی اسم اون کالا چیه
+پس به خواسته کاربر توجه کن که دقیقا دنبال چه ابجکتی میگرده
+سعی کن اسم رو دقیق بگی
+مثلا لیوان و ماگ فرق دارن باهم باید اسم درستشونو بگی
+در صورت نیاز اگه یک ویژگی خاصی هم داره بگو
+مثلا بخاری برقی
+ماگ سفالی
+میز چوبی
+و ...
+
+سعی کن بفهمی این عکس برای فروش چه کالایی چون ممکنه چندتا آبجکت تو عکس باشه
+و در نهایت فقط اسم کالا رو بگو
+قارسی هم باید باشه جوابت"""
 }
