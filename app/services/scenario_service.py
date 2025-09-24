@@ -439,11 +439,14 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
     elif session.state == 2:
         response, updated_session = await scenario_4_state_2(user_message, db, session)
     elif session.state == 3:
-        response, updated_session, is_done = await scenario_4_state_3(user_message, db, session)
-        logger.info(str(response))
+        response, updated_session = await scenario_4_state_3(user_message, db, session)
+        
+    elif session.state == 4: # <--- حالت جدید برای انتخاب فروشنده
+        response, updated_session, is_done = await scenario_4_state_4(user_message, db, session)
+        session = updated_session
         if is_done:
-            
             return ChatResponse(member_random_keys=response)
+        
     session = updated_session 
         
     session.chat_history.append({"role": "assistant", "content": response})
@@ -614,33 +617,67 @@ async def scenario_4_state_3(user_message, db, session: Scenario4State):
     system_prompt = SCENARIO_FOUR_PROMPTS["final_recommendation"]
     input_for_selection = {
         "user_response": user_message,
-        "product_options": str(products_with_sellers), # Correct key and data
-        "chat_history": str(history)
+        "product_options": str(products_with_sellers)
     }
     llm_response = await simple_openai_gpt_request(
         message=json.dumps(input_for_selection),
         systemprompt=system_prompt,
         model="gpt-4.1",
     )
-    logger.info(f"llm_response in state 3:\n{str(llm_response)}")
-
+    
     json_from_llm = parse_llm_json_response(llm_response)
+    selected_product_name = json_from_llm.get("selected_product_name")
 
-    
-    final_user_message = json_from_llm.get("selected_member_key")
-    if not final_user_message:
+    if not selected_product_name:
         session.state = 2
-        response, session = await scenario_4_state_2(user_message, db, session)
-        return response, session, False
+        return await scenario_4_state_2(user_message, db, session)
 
-    member_key = final_user_message
-
+    selected_product = next((p for p in products_with_sellers if p['product_name'] == selected_product_name), None)
     
-    return [member_key], session, True
+    if not selected_product:
+        session.state = 2
+        return await scenario_4_state_2(user_message, db, session)
+
+    session.selected_product = selected_product
+    session.state = 4
+
+    present_sellers_prompt = SCENARIO_FOUR_PROMPTS["present_sellers"].format(
+        product_name=selected_product['product_name'],
+        sellers_list=json.dumps(selected_product['sellers'], ensure_ascii=False)
+    )
+    
+    response_message = await simple_openai_gpt_request(
+        message="",
+        systemprompt=present_sellers_prompt,
+        model="gpt-4.1-mini"
+    )
+
+    return response_message, session
 
 async def scenario_4_state_4(user_message, db, session: Scenario4State):
-    # This state can be implemented if needed for further interactions
-    pass
+    selected_product = session.selected_product
+    if not selected_product:
+        raise HTTPException(status_code=404, detail="محصولی انتخاب نشده است.")
+
+    system_prompt = SCENARIO_FOUR_PROMPTS["select_seller"].format(
+        user_response=user_message,
+        seller_options=str(selected_product['sellers'])
+    )
+
+    llm_response = await simple_openai_gpt_request(
+        message="",
+        systemprompt=system_prompt,
+        model="gpt-4.1",
+    )
+    
+    json_from_llm = parse_llm_json_response(llm_response)
+    selected_member_key = json_from_llm.get("selected_member_key")
+
+    if not selected_member_key:
+        final_message = "متاسفانه نتوانستم فروشنده مورد نظر شما را پیدا کنم. لطفاً دوباره تلاش کنید."
+        return final_message, session, False
+
+    return [selected_member_key], session, True
 
 async def scenario_4_emergancy_state(user_message, db, session):
     history = session.chat_history
