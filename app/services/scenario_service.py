@@ -429,9 +429,9 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
     session.chat_history.append({"role": "user", "content": user_message})
 
     logger.info(f"len(session.chat_history): {len(session.chat_history)}")
-    if len(session.chat_history) > 4:
+    if len(session.chat_history) > 9:
         response, updated_session, is_ok = await scenario_4_emergancy_state(user_message, db, session)
-        return ChatResponse(message=response)
+        return ChatResponse(member_random_keys=response)
     
     if session.state == 1 or not session.state:
         response, updated_session = await scenario_4_state_1(user_message, session)
