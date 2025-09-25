@@ -465,9 +465,9 @@ async def scenario_4_state_1(user_message, session):
         chat_history=history  # Pass the list of previous messages directly
     )
 
-    # 3. Process response and update history in memory
     response_text = llm_response.strip()
     session.state = 2
+    search_res = await semantic_search()
 
     return response_text, session
 
@@ -491,8 +491,9 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
         
         json_str = llm_response_str.split("```json")[1].split("```")[0].strip()
         filters_json = json.loads(json_str)
-        
-        
+        search_query_text = filters_json.get("search_query")
+        search_res = await semantic_search(search_query_text)
+        # logger.info(search_res)
         products_with_sellers = await repository.find_products_with_aggregated_sellers(db, filters_json)
         session.products_with_sellers = products_with_sellers
         logger.info(f"products_with_sellers:\n{str(products_with_sellers)}")

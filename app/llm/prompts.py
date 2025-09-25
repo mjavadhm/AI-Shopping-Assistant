@@ -1222,3 +1222,7 @@ Your Output: name
 
 """
 }
+
+NEW_SCENARIO_4_PROMPTS={
+    "main_prompt": """"""
+}
