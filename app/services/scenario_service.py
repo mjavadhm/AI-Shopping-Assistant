@@ -711,8 +711,8 @@ async def scenario_4_emergancy_state(user_message, db, session):
     
     return [member_key], session, True
 
-async def scenario_4_new_state_1(user_message, db, session):
-    try:
+# async def scenario_4_new_state_1(user_message, db, session):
+#     try:
         
 
 def parse_llm_json_response(response_str: str) -> dict:
