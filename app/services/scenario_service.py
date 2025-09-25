@@ -467,7 +467,6 @@ async def scenario_4_state_1(user_message, session):
 
     response_text = llm_response.strip()
     session.state = 2
-    search_res = await semantic_search()
 
     return response_text, session
 
