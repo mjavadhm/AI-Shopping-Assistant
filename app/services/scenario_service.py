@@ -711,6 +711,9 @@ async def scenario_4_emergancy_state(user_message, db, session):
     
     return [member_key], session, True
 
+async def scenario_4_new_state_1(user_message, db, session):
+    try:
+        
 
 def parse_llm_json_response(response_str: str) -> dict:
     """
@@ -789,37 +792,83 @@ async def scenario_five(request: ChatRequest, db: AsyncSession) -> ChatResponse:
         return ChatResponse(message=final_response_text)
 
 
+# async def scenario_six(request: ChatRequest) -> ChatResponse:
+#     """
+#     Handles Scenario Six: Object detection in an image.
+#     """
+#     logger.info("Initiating Scenario 6: Image Object Detection.")
+    
+#     text_message = ""
+#     base64_image = ""
+
+#     # Extract text and image content from messages
+#     for message in request.messages:
+#         if message.type == "text":
+#             text_message = message.content
+#         elif message.type == "image":
+#             base64_image = message.content
+
+#     if not base64_image:
+#         raise HTTPException(status_code=400, detail="Image content not found in the request.")
+
+#     # Get the prompt for object detection
+#     prompt = SCENARIO_SIX_PROMPTS.get("main_prompt", "Identify the main object in the image.")
+
+#     # Call the vision model service
+#     logger.info(f"{text_message}")
+#     object_name = await analyze_image(
+#         user_message=text_message,
+#         base64_image=base64_image,
+#         prompt=prompt
+#     )
+
+#     return ChatResponse(message=object_name)
+
+
 async def scenario_six(request: ChatRequest) -> ChatResponse:
     """
-    Handles Scenario Six: Object detection in an image.
+    Handles Scenario Six: Image-based product search.
     """
-    logger.info("Initiating Scenario 6: Image Object Detection.")
+    logger.info("Initiating Scenario 6: Image-based Product Search.")
     
-    text_message = ""
     base64_image = ""
 
-    # Extract text and image content from messages
+    # Extract image content from messages
     for message in request.messages:
-        if message.type == "text":
-            text_message = message.content
-        elif message.type == "image":
+        if message.type == "image":
             base64_image = message.content
 
     if not base64_image:
         raise HTTPException(status_code=400, detail="Image content not found in the request.")
 
-    # Get the prompt for object detection
-    prompt = SCENARIO_SIX_PROMPTS.get("main_prompt", "Identify the main object in the image.")
+    # Prepare the payload for the image embedding server
+    payload = {"base64_image": base64_image}
+    
+    # URL of your image embedding server's search endpoint
+    url = "https://image-embed-server.darkube.app/search/"
 
-    # Call the vision model service
-    logger.info(f"{text_message}")
-    object_name = await analyze_image(
-        user_message=text_message,
-        base64_image=base64_image,
-        prompt=prompt
-    )
+    # Call the image embedding server
+    logger.info(f"Sending image to embedding server at {url}")
+    search_results = await post_async_request(url, payload)
 
-    return ChatResponse(message=object_name)
+    if not search_results or not isinstance(search_results, list) or len(search_results) == 0:
+        logger.error("No valid response from the image search server.")
+        raise HTTPException(status_code=500, detail="Could not find a match for the image.")
+
+    # Extract the random key from the first result
+    try:
+        first_result_id = search_results[0].get("id")
+        if not first_result_id:
+            raise KeyError("'id' not found in the first result")
+            
+    except (KeyError, IndexError) as e:
+        logger.error(f"Error parsing response from image search server: {e}")
+        raise HTTPException(status_code=500, detail="Invalid response format from the image search server.")
+    
+    logger.info(f"Found product key from image search: {first_result_id}")
+
+    # Return the response in the desired format
+    return ChatResponse(base_random_keys=[first_result_id])
 
 # async def scenario_seven(request: ChatRequest, db: AsyncSession) -> ChatResponse:
 #     user_message = request.messages[-1].content.strip()
