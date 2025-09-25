@@ -841,7 +841,11 @@ async def scenario_six(request: ChatRequest) -> ChatResponse:
     if not base64_image:
         raise HTTPException(status_code=400, detail="Image content not found in the request.")
 
-    # Strip the data URL prefix if it exists, as the server expects a raw base64 string.
+    # --- ✅ KEY FIX: Strip the data URL prefix ---
+    # This ensures only the raw Base64 data is sent, reducing size and matching what the server expects.
+    if "," in base64_image:
+        base64_image = base64_image.split(',', 1)[1]
+    # ---------------------------------------------
 
     # Prepare the payload for the image embedding server
     payload = {"base64_image": base64_image}
@@ -849,7 +853,7 @@ async def scenario_six(request: ChatRequest) -> ChatResponse:
     # URL of your image embedding server's search endpoint
     url = "https://image-embed-server.darkube.app/search/"
 
-    # Call the image embedding server
+    # Call the image embedding server (using your robust post_async_request function)
     logger.info(f"Sending image to embedding server at {url}")
     search_results = await post_async_request(url, payload)
 
