@@ -883,6 +883,7 @@ async def scenario_six(request: ChatRequest) -> ChatResponse:
     else:
         return ChatResponse(base_random_keys=[first_result_id])
 
+########
 # async def scenario_seven(request: ChatRequest, db: AsyncSession) -> ChatResponse:
 #     user_message = request.messages[-1].content.strip()
 #     logger.info("Initiating Scenario 7: Product Feature Extraction.")
