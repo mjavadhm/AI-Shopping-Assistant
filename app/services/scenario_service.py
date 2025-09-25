@@ -1355,7 +1355,7 @@ async def semantic_search_category(user_query):
             if 'score' in item:
                 del item['score']
     
-    return json.dumps(results, ensure_ascii=False)
+    return results
 # async def get_embedding_vector(text_query: str) -> Optional[List[float]]:
 #     """
 #     متن را به سرور امبدینگ فرستاده و وکتور امبدینگ را دریافت می‌کند.
