@@ -1018,12 +1018,12 @@ Analyze the user's response and the list of provided product options. Your goal 
 
 # EXAMPLE
 - **user_response:** "اجاق گاز اخوان مدل G114 به نظرم بهتره."
-- **product_options:** `[{"product_name": "اجاق گاز اخوان شیشه ای مشکی V28", ...}, {"product_name": "اجاق گاز اخوان شیشه ای مشکی G114", ...}]`
+- **product_options:** `[{{"product_name": "اجاق گاز اخوان شیشه ای مشکی V28", ...}}, {{"product_name": "اجاق گاز اخوان شیشه ای مشکی G114", ...}}]`
 - **Correct Output:**
     ```json
-    {
+    {{
       "selected_product_name": "اجاق گاز اخوان شیشه ای مشکی G114"
-    }
+    }}
     ```
 """,
 
@@ -1070,12 +1070,12 @@ Analyze the user's response and the provided list of seller options. Your goal i
 
 # EXAMPLE
 - **User Response:** "همون که ارزون‌تره و توی تهرانه رو می‌خوام."
-- **Seller Options:** `[{"member_key": "seller-abc-123", "price": 2100000, "city": "تهران"}, {"member_key": "seller-def-456", "price": 2200000, "city": "تهران"}]`
+- **Seller Options:** `[{{"member_key": "seller-abc-123", "price": 2100000, "city": "تهران"}}, {{"member_key": "seller-def-456", "price": 2200000, "city": "تهران"}}]`
 - **Correct Output:**
     ```json
-    {
+    {{
       "selected_member_key": "seller-abc-123"
-    }
+    }}
     ```
 """,
 
@@ -1095,7 +1095,7 @@ You will be given a list of potential sellers and a set of desired criteria that
 
 You will receive a JSON object containing two keys:
 
-- `criteria`: An object specifying the desired attributes (e.g., `{"city": "تهران", "price": "cheapest"}`).
+- `criteria`: An object specifying the desired attributes (e.g., `{{"city": "تهران", "price": "cheapest"}}`).
 
 - `seller_options`: A list of available seller objects.
 
@@ -1145,27 +1145,27 @@ Your output MUST be a single JSON object with one key, `selected_member_key`.
 
 ```json
 
-{
+{{
 
-  "criteria": {
+  "criteria": {{
 
     "city": "تهران",
 
     "price": "cheapest"
 
-  },
+  }},
 
   "seller_options": [
 
-    { "member_key": "seller-xyz-789", "city": "اصفهان", "price": 2000000, "has_warranty": true },
+    {{ "member_key": "seller-xyz-789", "city": "اصفهان", "price": 2000000, "has_warranty": true }},
 
-    { "member_key": "seller-abc-123", "city": "تهران", "price": 2100000, "has_warranty": true },
+    {{ "member_key": "seller-abc-123", "city": "تهران", "price": 2100000, "has_warranty": true }},
 
-    { "member_key": "seller-def-456", "city": "تهران", "price": 2100000, "has_warranty": false }
+    {{ "member_key": "seller-def-456", "city": "تهران", "price": 2100000, "has_warranty": false }}
 
   ]
 
-}
+}}
 
 CORRECT OUTPUT:
 
@@ -1173,11 +1173,11 @@ JSON
 
 
 
-{
+{{
 
   "selected_member_key": "seller-abc-123"
 
-}
+}}
 
 """
 
