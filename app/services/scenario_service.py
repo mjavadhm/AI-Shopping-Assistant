@@ -469,9 +469,19 @@ async def scenario_4_state_1(user_message, session):
     category_guess = res_json.get("category_guess")
     assistant_message = res_json.get("assistant_message")
     categories = await semantic_search_category(category_guess)
+    candidate_categories = [category['title'] for category in categories]
     response_text = llm_response.strip()
     session.state = 2
-
+    llm_response = await simple_openai_gpt_request(
+        message=user_message,
+        systemprompt=SCENARIO_FOUR_PROMPTS["select_category"].format(
+            user_request = history[0]['content'],
+            candidate_categories = candidate_categories
+            ),
+        model="gpt-4.1-mini",
+        chat_history=history
+    )
+    logger.info(llm_response)
     return assistant_message, session
 
 async def scenario_4_state_2(user_message, db, session: Scenario4State):
