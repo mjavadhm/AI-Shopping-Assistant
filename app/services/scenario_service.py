@@ -841,6 +841,10 @@ async def scenario_six(request: ChatRequest) -> ChatResponse:
     if not base64_image:
         raise HTTPException(status_code=400, detail="Image content not found in the request.")
 
+    # Strip the data URL prefix if it exists, as the server expects a raw base64 string.
+    if "," in base64_image:
+        base64_image = base64_image.split(',')[1]
+
     # Prepare the payload for the image embedding server
     payload = {"base64_image": base64_image}
     
