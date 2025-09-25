@@ -837,6 +837,8 @@ async def scenario_six(request: ChatRequest) -> ChatResponse:
     for message in request.messages:
         if message.type == "image":
             base64_image = message.content
+        if message.type == "text":
+            text_message = message.content
 
     if not base64_image:
         raise HTTPException(status_code=400, detail="Image content not found in the request.")
@@ -869,8 +871,17 @@ async def scenario_six(request: ChatRequest) -> ChatResponse:
     
     logger.info(f"Found product key from image search: {first_result_id}")
 
-    # Return the response in the desired format
-    return ChatResponse(base_random_keys=[first_result_id])
+    system_prompt = SCENARIO_SIX_PROMPTS.get("route")
+    llm_response = await simple_openai_gpt_request(
+                message=text_message,
+                systemprompt=system_prompt,
+                model="gpt-4.1-nano",
+                        
+            )
+    if "name" in llm_response.lower():
+        return ChatResponse(message=search_results[0].get("persian_name"))
+    else:
+        return ChatResponse(base_random_keys=[first_result_id])
 
 # async def scenario_seven(request: ChatRequest, db: AsyncSession) -> ChatResponse:
 #     user_message = request.messages[-1].content.strip()

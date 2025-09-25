@@ -1198,4 +1198,27 @@ SCENARIO_SIX_PROMPTS = {
 سعی کن بفهمی این عکس برای فروش چه کالایی چون ممکنه چندتا آبجکت تو عکس باشه
 و در نهایت فقط اسم کالا رو بگو
 قارسی هم باید باشه جوابت""",
+    "route": """nalyze the user's query. Your task is to determine the user's intent and classify it into one of two categories: "product" or "name".
+
+If the user is asking for a product recommendation or something that can be bought, respond with the word "product".
+
+If the user is asking to identify an object, a concept, or a thing in the image, respond with the word "name".
+
+Do not provide any other explanation or words.
+
+Examples:
+
+User Query: "لطفاً یک محصول مرتبط با تصویر به من بدهید."
+Your Output: product
+
+User Query: "لطفاً یک محصول مرتبط با تصویر را به من معرفی کنید."
+Your Output: product
+
+User Query: "شیء اصلی در تصویر چیست؟"
+Your Output: name
+
+User Query: "لطفاً بگویید مفهوم اصلی در تصویر چیست؟"
+Your Output: name
+
+"""
 }
