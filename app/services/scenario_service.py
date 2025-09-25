@@ -812,7 +812,7 @@ async def scenario_six(request: ChatRequest) -> ChatResponse:
     prompt = SCENARIO_SIX_PROMPTS.get("main_prompt", "Identify the main object in the image.")
 
     # Call the vision model service
-    logger.info(f"{base64_image}\n{text_message}")
+    logger.info(f"{text_message}")
     object_name = await analyze_image(
         user_message=text_message,
         base64_image=base64_image,
@@ -820,6 +820,29 @@ async def scenario_six(request: ChatRequest) -> ChatResponse:
     )
 
     return ChatResponse(message=object_name)
+
+# async def scenario_seven(request: ChatRequest, db: AsyncSession) -> ChatResponse:
+#     user_message = request.messages[-1].content.strip()
+#     logger.info("Initiating Scenario 7: Product Feature Extraction.")
+
+#     found_key = await find_exact_product_name_service(user_message, db)
+#     if not found_key:
+#         raise HTTPException(status_code=404, detail="No products found matching the keywords.")
+    
+#     product = await repository.get_product_by_random_key(db, found_key)
+    
+#     message = f"user input:{user_message}\n\nproduct_feautures:{str(product.extra_features)}"
+#     system_prompt = SCENARIO_TWO_PROMPTS.get("main_prompt_step_2", "")
+
+#     llm_response = await simple_openai_gpt_request(
+#                 message=message,
+#                 systemprompt=system_prompt,
+#                 model="gpt-4.1",
+                        
+#             )
+        
+#     logger.info(f"llm response:{llm_response}")
+#     return ChatResponse(message=llm_response)
 
 
 async def get_product_detail(db, product, code_to_get_info):
