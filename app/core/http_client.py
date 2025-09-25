@@ -16,9 +16,11 @@ async def post_async_request(url: str, payload: Dict[str, Any]) -> Optional[Dict
                                    or None if an error occurs.
     """
     logger.info(f"Sending async POST request to: {url}")
+    headers = {"Content-Type": "application/json"}
+
     async with aiohttp.ClientSession() as session:
         try:
-            async with session.post(url, json=payload) as response:
+            async with session.post(url, json=payload, headers=headers) as response:
 
                 response.raise_for_status()
                 
