@@ -464,11 +464,15 @@ async def scenario_4_state_1(user_message, session):
         model="gpt-4.1-mini",
         chat_history=history  # Pass the list of previous messages directly
     )
-
+    logger.info(llm_response)
+    res_json = parse_llm_json_response(llm_response)
+    category_guess = res_json.get("category_guess")
+    assistant_message = res_json.get("assistant_message")
+    categories = await semantic_search_category(category_guess)
     response_text = llm_response.strip()
     session.state = 2
 
-    return response_text, session
+    return assistant_message, session
 
 async def scenario_4_state_2(user_message, db, session: Scenario4State):
 
@@ -490,6 +494,7 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
         
         json_str = llm_response_str.split("```json")[1].split("```")[0].strip()
         filters_json = json.loads(json_str)
+        
         search_query_text = filters_json.get("search_query")
         search_res = await semantic_search(search_query_text)
         # logger.info(search_res)
@@ -1297,6 +1302,30 @@ async def search_embed(user_query, keywords):
 async def semantic_search(user_query):
     
     url = "https://vector-search.darkube.app/semantic-search/"
+    payload = {
+        "query": user_query,
+        
+    }
+    logger.info(f"sending to semantic search: query:{user_query}\n")
+    
+    results = await post_async_request(url, payload)
+
+    if results is None:
+        logger.error("❌ No results received from post_async_request.")
+        return "❌ No results received from post_async_request."
+
+    logger.info(f"result:{json.dumps(results, ensure_ascii=False)}")
+    
+    if isinstance(results, list):
+        for item in results:
+            if 'score' in item:
+                del item['score']
+    
+    return json.dumps(results, ensure_ascii=False)
+
+async def semantic_search_category(user_query):
+    
+    url = "https://vector-search.darkube.app/search-category/"
     payload = {
         "query": user_query,
         
