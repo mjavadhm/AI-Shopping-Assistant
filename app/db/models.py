@@ -124,6 +124,7 @@ class Category(Base):
     id = Column(BigInteger, primary_key=True)
     title = Column(String)
     parent_id = Column(BigInteger)
+    features_example = Column(JSONB)
 
 class Brand(Base):
     """

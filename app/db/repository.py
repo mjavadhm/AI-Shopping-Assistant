@@ -8,6 +8,30 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.dialects.postgresql import to_tsquery
 from sqlalchemy.types import Float
 
+
+
+
+async def get_all_categories(db: AsyncSession) -> List[models.Category]:
+    """
+    Fetches all categories from the database.
+    Returns a string where each line is a category title.
+    """
+    result = await db.execute(select(models.Category.title))
+    titles = result.scalars().all()
+    return "\n".join(titles)
+
+async def get_category_features_example(db: AsyncSession, category_title: str) -> Optional[dict]:
+    """
+    Fetches the features_example JSON for a given category title.
+    """
+    query = select(models.Category.features_example).where(
+        models.Category.title == category_title
+    )
+    result = await db.execute(query)
+    features_example = result.scalar_one_or_none()
+    return features_example if features_example else None
+
+
 async def search_product_by_name(db: AsyncSession, product_name: str) -> Optional[List[str]]:
     """
     Asynchronously searches for products by their Persian name in the database.

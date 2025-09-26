@@ -1,5 +1,6 @@
 import asyncio
 from fastapi import HTTPException, Request
+import re
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional, Tuple ,Dict
 import json
@@ -434,7 +435,7 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
         return ChatResponse(member_random_keys=response)
     
     if session.state == 1 or not session.state:
-        response, updated_session = await scenario_4_state_1(user_message, session)
+        response, updated_session = await scenario_4_state_1(user_message, db, session)
 
     elif session.state == 2:
         response, updated_session = await scenario_4_state_2(user_message, db, session)
@@ -456,49 +457,28 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
     return ChatResponse(message=response)
     
     
-async def scenario_4_state_1(user_message, session: Scenario4State):
+async def scenario_4_state_1(user_message, db, session: Scenario4State):
     history = session.chat_history
-    llm_response = await simple_openai_gpt_request(
+    assistant_message = await simple_openai_gpt_request(
         message=user_message,  # Send only the latest message
         systemprompt=SCENARIO_FOUR_PROMPTS["system_prompt"],
         model="gpt-4.1-mini",
         chat_history=history  # Pass the list of previous messages directly
     )
-    logger.info(llm_response)
-    res_json = parse_llm_json_response(llm_response)
-    category_guess = res_json.get("category_guess")
-    assistant_message = res_json.get("assistant_message")
-    categories = await semantic_search_category(category_guess)
-    candidate_categories = [category['title'] for category in categories]
-    response_text = llm_response.strip()
-    session.state = 2
-    llm_response_selection = await simple_openai_gpt_request(
+    categories = await repository.get_all_categories(db)
+    chosen_category = await simple_openai_gpt_request(
         message=user_message,
-        systemprompt=SCENARIO_FOUR_PROMPTS["select_category"].format(
-            user_request = user_message,
-            candidate_categories = candidate_categories
-            ),
-        model="gpt-4.1-mini",
-        chat_history=history
+        systemprompt=SCENARIO_FOUR_PROMPTS["extract_category"].format(categories),
+        model="gpt-5-mini"
     )
-    selection_json = parse_llm_json_response(llm_response_selection)
-    selected_title = selection_json.get("selected_category")
-    logger.info(f"Category selection response: {selected_title}")
-    chosen_category = None
-    if selected_title:
-        for category in categories:
-            if category.get('title') == selected_title:
-
-                chosen_category = category
-                break
+    categorie_sample = await repository.get_category_features_example(db, chosen_category)
     if chosen_category:
-        feature_schema = chosen_category.get('feature_schema', {})
-        schema_as_string = json.dumps(feature_schema, ensure_ascii=False)
+        schema_as_string = json.dumps(categorie_sample, ensure_ascii=False)
         session.product_features = schema_as_string
-        logger.info(f"Successfully found category '{selected_title}' and stored its schema.({schema_as_string})")
+        logger.info(f"Successfully found category '{chosen_category}' and stored its schema.({schema_as_string})")
     else:
         session.product_features = "{}"
-        logger.warning(f"Could not find the selected category '{selected_title}' in the search results. Storing empty schema.")
+        logger.warning(f"Could not find the selected category '{chosen_category}' in the search results. Storing empty schema.")
         
     return assistant_message, session
 
