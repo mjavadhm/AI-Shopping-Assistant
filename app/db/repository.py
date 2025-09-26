@@ -2,10 +2,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Dict, Optional, Any
 from . import models
-from sqlalchemy import select, func, and_, text
+from sqlalchemy import select, func, and_, text, or_, case, literal_column, cast
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import joinedload
 from sqlalchemy.dialects.postgresql import to_tsquery
+from sqlalchemy.types import Float
 
 async def search_product_by_name(db: AsyncSession, product_name: str) -> Optional[List[str]]:
     """
@@ -118,6 +119,128 @@ async def find_products_with_aggregated_sellers(
     ]
 
     return products_with_sellers
+
+async def find_products_with_aggregated_sellers_with_features(
+    db: AsyncSession,
+    filters_json: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """
+    کالاها را بر اساس امتیاز ترکیبی (شباهت نام + تطابق ویژگی‌ها) پیدا کرده و مرتب‌سازی می‌کند.
+    """
+    search_query_text = filters_json.get("search_query")
+    structured_filters = filters_json.get("structured_filters", {})
+
+    # ---------- ۱. ساخت CTE برای فیلتر کردن فروشندگان (بدون تغییر) ----------
+    seller_filters = []
+    if "price_min" in structured_filters and structured_filters["price_min"] is not None:
+        seller_filters.append(models.Member.price >= structured_filters["price_min"])
+    if "price_max" in structured_filters and structured_filters["price_max"] is not None:
+        seller_filters.append(models.Member.price <= structured_filters["price_max"])
+    if "has_warranty" in structured_filters and structured_filters["has_warranty"]:
+        seller_filters.append(models.Shop.has_warranty == True)
+    if "city_name" in structured_filters and structured_filters["city_name"]:
+        seller_filters.append(models.City.name == structured_filters["city_name"])
+
+    filtered_sellers_cte = (
+        select(
+            models.Member.base_random_key,
+            func.jsonb_build_object(
+                'member_key', models.Member.random_key, 'price', models.Member.price,
+                'has_warranty', models.Shop.has_warranty, 'shop_score', models.Shop.score,
+                'city', models.City.name
+            ).label("seller_data")
+        )
+        .join(models.Shop, models.Member.shop_id == models.Shop.id)
+        .join(models.City, models.Shop.city_id == models.City.id)
+        .where(and_(*seller_filters))
+        .cte("filtered_sellers")
+    )
+
+    # ---------- ۲. ساخت کوئری اصلی با منطق امتیازدهی نهایی ----------
+
+    # --- تعریف عبارات امتیازدهی ---
+    
+    # امتیاز شباهت نام
+    s_score_expr = literal_column("0.0").cast(Float)
+    if search_query_text:
+        s_score_expr = func.similarity(models.BaseProduct.persian_name, search_query_text)
+
+    # امتیاز نرمال‌شده ویژگی‌ها
+    feature_filters = structured_filters.get("features", {})
+    f_score_expr = literal_column("0.0").cast(Float)
+    if feature_filters:
+        f_score_clauses = [
+            case(
+                [(models.BaseProduct.extra_features[key].as_string() == str(value), 1)],
+                else_=0
+            ) for key, value in feature_filters.items()
+        ]
+        if f_score_clauses:
+            raw_feature_score = sum(f_score_clauses)
+            total_features_count = len(feature_filters)
+            # نرمال‌سازی با تقسیم بر تعداد کل ویژگی‌ها
+            if total_features_count > 0:
+                f_score_expr = cast(raw_feature_score, Float) / total_features_count
+    
+    # --- محاسبه امتیاز کل با فرمول نهایی ---
+    # (امتیاز نام) + (نصف امتیاز نرمال‌شده ویژگی‌ها)
+    total_score = (s_score_expr + (f_score_expr / 2.0)).label("total_score")
+
+
+    query = (
+        select(
+            models.BaseProduct.persian_name,
+            models.BaseProduct.random_key,
+            models.BaseProduct.extra_features,
+            func.jsonb_agg(filtered_sellers_cte.c.seller_data).label("sellers"),
+            total_score
+        )
+        .join(filtered_sellers_cte, models.BaseProduct.random_key == filtered_sellers_cte.c.base_random_key)
+        .group_by(models.BaseProduct.random_key, models.BaseProduct.persian_name, models.BaseProduct.extra_features)
+    )
+    
+    # --- ساخت شرط WHERE و ORDER BY داینامیک ---
+
+    if search_query_text or feature_filters:
+        filter_conditions = []
+        # شرط ۱: شباهت نام بیشتر از یک آستانه مشخص
+        if search_query_text:
+            filter_conditions.append(and_(
+                models.BaseProduct.persian_name.op("%")(search_query_text),
+                s_score_expr > 0.1
+            ))
+        
+        if feature_filters:
+            raw_feature_score_for_where = sum(
+                 case([(models.BaseProduct.extra_features[k].as_string() == str(v), 1)], else_=0) 
+                 for k, v in feature_filters.items()
+            )
+            filter_conditions.append(raw_feature_score_for_where > 0)
+
+        if filter_conditions:
+            query = query.where(or_(*filter_conditions))
+
+        query = query.order_by(total_score.desc())
+    else:
+        query = query.order_by(func.count(filtered_sellers_cte.c.seller_data).desc())
+
+
+    query = query.limit(10)
+    
+    result = await db.execute(query)
+    
+    products_with_sellers = [
+        {
+            'product_name': row.persian_name,
+            'product_features': row.extra_features,
+            'base_product_key': row.random_key,
+            'sellers': row.sellers or []
+        }
+        for row in result.all()
+    ]
+
+    return products_with_sellers
+
 
 
 async def find_similar_products(db: AsyncSession, product_name: str) -> List[Dict[str, str]]:

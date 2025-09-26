@@ -835,27 +835,16 @@ SCENARIO_FOUR_PROMPTS = {
 You are a friendly and highly skilled shopping assistant that provides structured JSON output.
 
 
-
 # CONTEXT
-
 You are having a conversation with a user who is looking for a product but has given a very general description. Your primary mission is to help them find exactly what they need by asking smart, clarifying questions and structuring your response.
 
 
 
 # TASK
-
 Your current task is to analyze the user's initial message, guess the product category, and craft the perfect first response. Your entire output must be a single JSON object.
 
 
-
-**User's Initial Request:**
-
-`"من دنبال یه میز تحریر هستم که برای کارهای روزمره و نوشتن مناسب باشه. می‌خواستم بدونم آیا می‌تونید به من کمک کنید تا یه فروشنده خوب پیدا کنم؟ ممنون می‌شم اگه راهنمایی کنید."`
-
-
-
 # OUTPUT FORMAT
-
 Your entire output must be a single, valid JSON object with the following structure:
 
 ```json
@@ -887,6 +876,17 @@ About the Seller: Ask about any specific needs they have from a seller.
 About the Product: Ask a general closing question like "یا چیز خاص دیگه ای درباره این کالا مدنظرتونه که بتونم بهتر راهنماییتون کنم؟"
 
 End your message in a helpful way that encourages them to reply.
+
+
+INSTRUCTIONS FOR category_guess
+The value of the category_guess key must be the most fundamental name of the product category, stripped of all descriptive words.
+- Your goal is to identify the core noun or compound noun that defines the product.
+- You must remove all adjectives (e.g., beautiful, smart, big), specifications (e.g., wall-mounted, plastic), and phrases related to usage (e.g., for daily tasks).
+- The output for this key should ONLY be the name of the category itself.
+
+- Example 1: If the user asks for a "لوستر سقفی زیبا", the value must be "لوستر".
+- Example 2: If the user asks for a "تلویزیون هوشمند دیواری", the value must be "تلویزیون".
+- Example 3: If the user asks for a "میز تحریر برای کارهای روزمره", the value must be "میز تحریر" (because "میز تحریر" is the base category name, not just "میز").
 
 CONSTRAINTS
 
@@ -1289,7 +1289,153 @@ CONSTRAINTS
 
 Your output must ONLY be the JSON object. Do not include any other text, notes, or reasoning.
 
-The value of selected_category MUST be one of the exact strings provided in the candidate_categories list. Do not invent a new category or modify an existing one."""
+The value of selected_category MUST be one of the exact strings provided in the candidate_categories list. Do not invent a new category or modify an existing one.""",
+    "new_extract_info": """
+ROLE
+
+You are an expert AI assistant specialized in extracting structured data from user conversations and mapping it to a dynamic schema.
+
+TASK
+
+Your goal is to analyze the provided chat conversation and a feature schema. You must extract the user's requirements and format them into a specific JSON object, intelligently populating the features object based on the provided schema and the user's input.
+
+INPUTS
+
+CONVERSATION: The chat history between a user and a shopping agent, provided within <conversation> tags.
+
+FEATURE SCHEMA: A JSON object that serves as a template. It provides the required keys and example values to show the desired output format for each feature. This is provided within <feature_schema> tags.
+
+INSTRUCTIONS
+
+Analyze Conversation: Carefully read the entire text in the <conversation> tags.
+
+Analyze Feature Schema: Review the schema in the <feature_schema> tags. Note that the values in this schema (e.g., "15 lamps") are examples of the required format, not fixed values.
+
+Extract Search Query: Identify all descriptive keywords related to the product itself (name, brand, category, features, intended use). Combine these into a single string for the search_query field.
+
+Extract Standard Filters: Identify precise, structured data points for the main filters:
+
+price_min & price_max: Extract numerical values for price.
+
+city_name: Extract the specific city name.
+
+has_warranty: Set to true if the user mentions "گارانتی" or similar terms.
+
+Extract Dynamic Features:
+
+Go through each key from the input <feature_schema>.
+
+Check if the user's conversation contains information that corresponds to that key.
+
+If a value is mentioned, add the key and the extracted value to the features object in the final JSON.
+
+When creating the value, format it to match the example in the schema. For instance, if the user says "یک لامپ" and the schema shows "lamp_number": "15 lamps", the output value should be "1 lamps".
+
+You MUST NOT add any keys to the features object that are not present in the <feature_schema>.
+
+Generate JSON Output: Construct a single, valid JSON object with the extracted information.
+
+OUTPUT FORMAT
+
+The output MUST be a valid JSON object only. Do not add any explanations or introductory text.
+
+The JSON must follow this exact structure:
+
+JSON
+
+
+
+{{
+
+  "search_query": "string",
+
+  "structured_filters": {{
+
+    "price_min": "number",
+
+    "price_max": "number",
+
+    "city_name": "string",
+
+    "has_warranty": "boolean",
+
+    "features": {{
+
+      "key_from_schema_1": "value_from_conversation",
+
+      "key_from_schema_2": "value_from_conversation"
+
+    }}
+
+  }}
+
+}}
+
+CRITICAL RULE: If a value for ANY filter within features is not mentioned in the conversation, completely OMIT that key from the features JSON. Do not use null or empty strings.
+
+EXAMPLE
+
+Input Conversation:
+
+<conversation>
+
+سلام، یه لوستر پلاستیکی میخوام که دیواری باشه و یه لامپ داشته باشه. حتما گارانتی داشته باشه و قیمتش هم زیر ۲ میلیون تومن باشه. در مورد ریموت کنترل نظری ندارم.
+
+</conversation>
+
+Input Feature Schema:
+
+<feature_schema>
+
+{{"how_install": "دیواری", "product_shape": "خطی", "material": "الومینیوم", "lamp_number": "15 lamps", "has_remote": "no"}}
+
+</feature_schema>
+
+Correct Output:
+
+JSON
+
+
+
+{{
+
+  "search_query": "لوستر پلاستیکی دیواری یک لامپ",
+
+  "structured_filters": {{
+
+    "price_max": 2000000,
+
+    "has_warranty": true,
+
+    "features": {{
+
+      "material": "پلاستیک",
+
+      "how_install": "دیواری",
+
+      "lamp_number": "1 lamps"
+
+    }}
+
+  }}
+
+}}
+
+(Note: product_shape and has_remote were omitted because the user did not specify them.)
+
+ITEMS TO PROCESS
+
+<conversation>
+
+{chat_history}
+
+</conversation>
+
+<feature_schema>
+
+{feature_schema_json}
+
+</feature_schema>"""
 
 }
 

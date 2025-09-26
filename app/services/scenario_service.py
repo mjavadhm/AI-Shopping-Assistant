@@ -506,7 +506,7 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
 
     history = session.chat_history
 
-    system_prompt_extract = SCENARIO_FOUR_PROMPTS["extract_info"].format(
+    system_prompt_extract = SCENARIO_FOUR_PROMPTS["new_extract_info"].format(
         chat_history=str(history)
     )
     
