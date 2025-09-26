@@ -117,31 +117,36 @@ async def classify_scenario_for_embed(request: ChatRequest) -> Tuple[str, str]:
         system_prompt = FIRST_AGENT_PROMPT.get("main_prompt", "")
         last_message = request.messages[-1].content.strip()
 
-        response, tool_calls = await simple_openai_gpt_request_with_tools(
-            message=last_message,
-            systemprompt=system_prompt,
-            model="gpt-4.1-mini",
-            tools=EMBED_FIRST_AGENT_TOOLS
-        )
-
         scenario = "UNCATEGORIZED"
-        product_name = ""
-        logger.info(response)
-        if not tool_calls:
-            logger.warning("No tool calls returned from the model.")
-            return scenario, product_name
+        for i in range(4):
+            logger.info(f"{i}. try")
+            response, tool_calls = await simple_openai_gpt_request_with_tools(
+                message=last_message,
+                systemprompt=system_prompt,
+                model="gpt-4.1-mini",
+                tools=EMBED_FIRST_AGENT_TOOLS
+            )
 
-        for tool_call in tool_calls:
-            logger.info(f"Processing tool call: {tool_call.function.name}")
-            try:
-                parsed_args = json.loads(tool_call.function.arguments)
-                if tool_call.function.name == "classify_user_request":
-                    scenario = parsed_args.get("scenario", "UNCATEGORIZED")
-                elif tool_call.function.name == "extract_search":
-                    product_name = parsed_args.get("product_name", [])
+            product_name = ""
+            logger.info(response)
+            if not tool_calls:
+                logger.warning("No tool calls returned from the model.")
+                return scenario, product_name
 
-            except json.JSONDecodeError:
-                logger.error(f"Failed to parse arguments for tool {tool_call.function.name}")
+            for tool_call in tool_calls:
+                logger.info(f"Processing tool call: {tool_call.function.name}")
+                try:
+                    parsed_args = json.loads(tool_call.function.arguments)
+                    if tool_call.function.name == "classify_user_request":
+                        scenario = parsed_args.get("scenario", "UNCATEGORIZED")
+                    elif tool_call.function.name == "extract_search":
+                        product_name = parsed_args.get("product_name", [])
+
+                except json.JSONDecodeError:
+                    logger.error(f"Failed to parse arguments for tool {tool_call.function.name}")
+                    
+            if scenario != "UNCATEGORIZED":
+                break
 
         return scenario, product_name
         
@@ -555,7 +560,7 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
         recovery_response_str = await simple_openai_gpt_request(
             message=json.dumps(input_for_recovery_query),
             systemprompt=navigator_prompt,
-            model="gpt-4.1-mini",
+            model="gpt-4.1",
         )
         recovery_response_json = json.loads(recovery_response_str)
         
@@ -609,7 +614,7 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
     final_response_str = await simple_openai_gpt_request(
         message=json.dumps(input_for_navigator_prompt),
         systemprompt=navigator_prompt,
-        model="gpt-4.1-mini",
+        model="gpt-4.1",
     )
     
     
@@ -664,7 +669,7 @@ async def scenario_4_state_3(user_message, db, session: Scenario4State):
     response_message = await simple_openai_gpt_request(
         message="",
         systemprompt=present_sellers_prompt,
-        model="gpt-4.1-mini"
+        model="gpt-4.1"
     )
 
     return response_message, session
