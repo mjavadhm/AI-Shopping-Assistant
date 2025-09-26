@@ -6,7 +6,7 @@ from app.schemas.chat import ChatRequest, ChatResponse
 from app.core.logger import logger
 from app.services.openai_service import simple_openai_gpt_request
 from app.llm.prompts import SCENARIO_THREE_PROMPTS
-from utils import Utils
+from .utils import Utils
 
 async def handle(request: ChatRequest, db: AsyncSession, found_key: str) -> ChatResponse:
     """
@@ -58,7 +58,7 @@ async def handle(request: ChatRequest, db: AsyncSession, found_key: str) -> Chat
         logger.info(f"LLM generated the following Python code:\n{llm_response_code}")
 
         # Step 4: Execute the generated code safely
-        final_answer = utils.execute_generated_code(llm_response_code, sellers_context)
+        final_answer = Utils.execute_generated_code(llm_response_code, sellers_context)
         logger.info(f"Calculated result from dynamic code: {final_answer}")
 
         return ChatResponse(message=str(final_answer))

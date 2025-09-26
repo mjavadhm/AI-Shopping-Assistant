@@ -9,7 +9,7 @@ from app.core.logger import logger
 from app.db import repository
 from app.services.openai_service import simple_openai_gpt_request
 from app.llm.prompts import SCENARIO_FOUR_PROMPTS
-from utils import Utils
+from .utils import Utils
 
 # In-memory storage for conversational sessions.
 # For a production application, this should be replaced with a proper cache like Redis.
@@ -188,7 +188,7 @@ async def _handle_state_2(user_message: str, db: AsyncSession, session: Scenario
                 "structured_filters": filters_json.get("structured_filters", {})
             }
             
-            second_attempt_products = await repository.find_products_with_aggregated_sellers(db, updated_filters_for_db)
+            second_attempt_products = await repository.find_products_with_aggregated_sellers_with_features(db, updated_filters_for_db)
             session.products_with_sellers = second_attempt_products
             if 1 <= len(second_attempt_products):
                 logger.info("Path B, Recovery Success: Found results on second attempt.")

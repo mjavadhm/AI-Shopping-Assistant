@@ -7,7 +7,8 @@ import asyncio
 from .schemas.chat import ChatRequest, ChatResponse
 from .core.logger import logger
 from app.core.json_logger import log_request_response
-from .services.scenario_service import check_scenario_one
+# from .services.scenario_service import check_scenario_one
+from .services.scenario_router import route_chat_request 
 from .db.session import get_db 
 from .services import openai_service
 from app.core.context import scenario_context
@@ -86,7 +87,7 @@ async def chat_handler(
     logger.info(f"Received chat request with chat_id: {request.chat_id}")
     logger.info(f"--> INCOMING Request Body: {request.model_dump()}")
 
-    response = await asyncio.wait_for(check_scenario_one(request, db=db, http_request=http_request), timeout=30.0)        
+    response = await asyncio.wait_for(route_chat_request(request, db=db, http_request=http_request), timeout=30.0)      
     logger.info(f"Sending response for chat_id: {request.chat_id}")
     logger.info(f"Response body: {response.model_dump()}")
     

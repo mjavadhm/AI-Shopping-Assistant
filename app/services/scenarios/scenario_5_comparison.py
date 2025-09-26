@@ -9,7 +9,8 @@ from app.services.openai_service import simple_openai_gpt_request
 from app.llm.prompts import SCENARIO_FIVE_PROMPTS
 from app.db import repository
 from app.db.session import AsyncSessionLocal
-from utils import Utils
+from .utils import Utils
+
 
 async def handle(request: ChatRequest, db: AsyncSession) -> ChatResponse:
     """

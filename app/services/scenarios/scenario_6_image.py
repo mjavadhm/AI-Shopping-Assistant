@@ -5,7 +5,7 @@ from app.schemas.chat import ChatRequest, ChatResponse
 from app.core.logger import logger
 from app.services.openai_service import analyze_image, simple_openai_gpt_request
 from app.llm.prompts import SCENARIO_SIX_PROMPTS
-from utils import Utils
+from .utils import Utils
 
 
 

@@ -1,0 +1,19 @@
+[
+    {
+        "request": {
+            "chat_id": "t1489-b3e6135b-5271-4ea9-86d1-6fc6abc6a4ac",
+            "messages": [
+                {
+                    "type": "text",
+                    "content": "کدام یک از جارو برقی‌های سطلی نیاک مدل Turbo MVC با شناسه \"ydetoe\" و جارو برقی سطلی تامیما مدل 3600 با قدرت مکش ۲۵۰۰ وات به لحاظ تعداد فروشگاه‌ها بهتر هستند؟"
+                }
+            ]
+        },
+        "response": {
+            "detail": "Failed to prepare data for comparison."
+        },
+        "openai_cost": 0.0028171999999999997,
+        "scenario": "SCENARIO_5_COMPARISON",
+        "id": 1
+    }
+]
