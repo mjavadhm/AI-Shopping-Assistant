@@ -171,6 +171,8 @@ A product is considered "specified" if the query contains a **unique identifier*
     - *Example*: "Who sells the LG TV model 23?", "What is the best price for it?".
     remember if user asked for عضو or گارانتی its SCENARIO_3_SELLER_INFO
     the user wants to get a int or float about sellers like maximum price,sum of sellers in specific country or ... .
+    in this scenario user wont ask like give me seller if wants a seller for unknown product its scenario 4 
+    user wants about data of sellers
 *
 **SCENARIO_5_COMPARISON**: The user wants to **compare two or more specified products**.
     - *Example*: "Which is better, the LG TV model 23 or the Samsung Q80?".
