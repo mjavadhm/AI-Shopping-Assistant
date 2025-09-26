@@ -456,7 +456,7 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
     return ChatResponse(message=response)
     
     
-async def scenario_4_state_1(user_message, session):
+async def scenario_4_state_1(user_message, session: Scenario4State):
     history = session.chat_history
     llm_response = await simple_openai_gpt_request(
         message=user_message,  # Send only the latest message
@@ -472,16 +472,32 @@ async def scenario_4_state_1(user_message, session):
     candidate_categories = [category['title'] for category in categories]
     response_text = llm_response.strip()
     session.state = 2
-    llm_response = await simple_openai_gpt_request(
+    llm_response_selection = await simple_openai_gpt_request(
         message=user_message,
         systemprompt=SCENARIO_FOUR_PROMPTS["select_category"].format(
-            user_request = history[0]['content'],
+            user_request = user_message,
             candidate_categories = candidate_categories
             ),
         model="gpt-4.1-mini",
         chat_history=history
     )
-    logger.info(llm_response)
+    logger.info(f"Category selection response: {llm_response_selection}")
+    chosen_category = None
+    if llm_response_selection:
+        for category in categories:
+            if category.get('title') == llm_response_selection:
+
+                chosen_category = category
+                break
+    if chosen_category:
+        feature_schema = chosen_category.get('feature_schema', {})
+        schema_as_string = json.dumps(feature_schema, ensure_ascii=False)
+        session.product_features = schema_as_string
+        logger.info(f"Successfully found category '{llm_response_selection}' and stored its schema.({schema_as_string})")
+    else:
+        session.product_features = "{}"
+        logger.warning(f"Could not find the selected category '{llm_response_selection}' in the search results. Storing empty schema.")
+        
     return assistant_message, session
 
 async def scenario_4_state_2(user_message, db, session: Scenario4State):

@@ -9,4 +9,5 @@ class Scenario4State(BaseModel):
     chat_history: List[Dict[str, Any]] = []
     filters_json: Optional[Dict[str, Any]] = None
     products_with_sellers: Optional[List[Dict[str, Any]]] = None
+    product_features: str = None
     selected_product: Optional[Dict[str, Any]] = None
