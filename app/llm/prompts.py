@@ -170,9 +170,10 @@ A product is considered "specified" if the query contains a **unique identifier*
 **SCENARIO_3_SELLER_INFO**: The user asks about the **purchasing logistics** (price, sellers, warranty(گارانتی), member (عضو)) of the specified product.
     - *Example*: "Who sells the LG TV model 23?", "What is the best price for it?".
     remember if user asked for عضو or گارانتی its SCENARIO_3_SELLER_INFO
-    the user wants to get a int or float about sellers like maximum price,sum of sellers in specific country or ... .
-    in this scenario user wont ask like give me seller if wants a seller for unknown product its scenario 4 
-    user wants about data of sellers
+    the user's need is a int or float about sellers like maximum price,sum of sellers in specific country or ... .
+    In this scenario, the user will not ask for a seller of a specific or unknown product. Instead, the user wants data about sellers.
+    questions LIKE دنبال فروشنده هستم یا کمکم کنید فروشنده پیدا کنم are SCENARIO_4_CONVERSATIONAL_SEARCH because the product is NOT specified.
+    
 *
 **SCENARIO_5_COMPARISON**: The user wants to **compare two or more specified products**.
     - *Example*: "Which is better, the LG TV model 23 or the Samsung Q80?".
