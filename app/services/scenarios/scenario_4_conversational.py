@@ -57,7 +57,7 @@ async def handle(request, db: AsyncSession) -> ChatResponse:
         elif session.state == 2:
             response_message, session = await _handle_state_2(user_message, db, session)
         elif session.state == 3:
-            response_message, session = await _handle_state_3(user_message, session)
+            response_message, session = await _handle_state_3(user_message, db, session)
         elif session.state == 4:
             response_message, session, is_done = await _handle_state_4(user_message, session)
             if is_done:
