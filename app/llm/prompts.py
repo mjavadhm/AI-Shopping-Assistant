@@ -821,13 +821,13 @@ Your Expected Output:
 
 
 
-{
+{{
 
   "product_1_id": "gouchy",
 
   "product_2_id": "uhqmhb"
 
-}
+}}
 """
 
 }
@@ -1372,19 +1372,19 @@ JSON
 
 
 
-{
+{{
   "search_query": "میز ناهارخوری گرد چوبی شش نفره",
-  "structured_filters": {
+  "structured_filters": {{
     "price_max": 10000000,
     "city_name": "تهران",
-    "features": {
+    "features": {{
       "material": "چوب",
       "leg_material": "فلز",
       "product_shape": "گرد",
       "capacity": "6 نفر"
-    }
-  }
-}
+    }}
+  }}
+}}
 
 (Note: has_chairs were omitted because the user did not specify them.)
 
