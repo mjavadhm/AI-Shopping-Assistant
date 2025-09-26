@@ -479,7 +479,7 @@ async def scenario_4_state_1(user_message, db, session: Scenario4State):
     else:
         session.product_features = "{}"
         logger.warning(f"Could not find the selected category '{chosen_category}' in the search results. Storing empty schema.")
-        
+    session.state = 2
     return assistant_message, session
 
 async def scenario_4_state_2(user_message, db, session: Scenario4State):
