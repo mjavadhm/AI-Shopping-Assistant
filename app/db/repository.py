@@ -182,34 +182,27 @@ async def find_products_with_aggregated_sellers_with_features(
 
     # ---------- ۲. ساخت کوئری اصلی با منطق امتیازدهی نهایی ----------
 
-    # --- تعریف عبارات امتیازدهی ---
-    
-    # امتیاز شباهت نام
     s_score_expr = literal_column("0.0").cast(Float)
     if search_query_text:
         s_score_expr = func.similarity(models.BaseProduct.persian_name, search_query_text)
 
-    # امتیاز نرمال‌شده ویژگی‌ها
     feature_filters = structured_filters.get("features", {})
     f_score_expr = literal_column("0.0").cast(Float)
     if feature_filters:
+        # --- FIX 1: Changed [(...)] to ((...)) ---
         f_score_clauses = [
             case(
-                [(models.BaseProduct.extra_features[key].as_string() == str(value), 1)],
+                (models.BaseProduct.extra_features[key].as_string() == str(value), 1),
                 else_=0
             ) for key, value in feature_filters.items()
         ]
         if f_score_clauses:
             raw_feature_score = sum(f_score_clauses)
             total_features_count = len(feature_filters)
-            # نرمال‌سازی با تقسیم بر تعداد کل ویژگی‌ها
             if total_features_count > 0:
                 f_score_expr = cast(raw_feature_score, Float) / total_features_count
     
-    # --- محاسبه امتیاز کل با فرمول نهایی ---
-    # (امتیاز نام) + (نصف امتیاز نرمال‌شده ویژگی‌ها)
     total_score = (s_score_expr + (f_score_expr / 2.0)).label("total_score")
-
 
     query = (
         select(
@@ -223,11 +216,8 @@ async def find_products_with_aggregated_sellers_with_features(
         .group_by(models.BaseProduct.random_key, models.BaseProduct.persian_name, models.BaseProduct.extra_features)
     )
     
-    # --- ساخت شرط WHERE و ORDER BY داینامیک ---
-
     if search_query_text or feature_filters:
         filter_conditions = []
-        # شرط ۱: شباهت نام بیشتر از یک آستانه مشخص
         if search_query_text:
             filter_conditions.append(and_(
                 models.BaseProduct.persian_name.op("%")(search_query_text),
@@ -235,8 +225,9 @@ async def find_products_with_aggregated_sellers_with_features(
             ))
         
         if feature_filters:
+            # --- FIX 2: Changed [(...)] to ((...)) ---
             raw_feature_score_for_where = sum(
-                 case([(models.BaseProduct.extra_features[k].as_string() == str(v), 1)], else_=0) 
+                 case((models.BaseProduct.extra_features[k].as_string() == str(v), 1), else_=0) 
                  for k, v in feature_filters.items()
             )
             filter_conditions.append(raw_feature_score_for_where > 0)
@@ -247,7 +238,6 @@ async def find_products_with_aggregated_sellers_with_features(
         query = query.order_by(total_score.desc())
     else:
         query = query.order_by(func.count(filtered_sellers_cte.c.seller_data).desc())
-
 
     query = query.limit(10)
     
