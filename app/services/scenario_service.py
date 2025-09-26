@@ -468,7 +468,7 @@ async def scenario_4_state_1(user_message, db, session: Scenario4State):
     categories = await repository.get_all_categories(db)
     chosen_category = await simple_openai_gpt_request(
         message=user_message,
-        systemprompt=SCENARIO_FOUR_PROMPTS["extract_category"].format(categories),
+        systemprompt=SCENARIO_FOUR_PROMPTS["extract_category"].format(categories=categories),
         model="gpt-5-mini"
     )
     categorie_sample = await repository.get_category_features_example(db, chosen_category)
