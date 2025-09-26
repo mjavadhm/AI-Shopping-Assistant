@@ -148,13 +148,10 @@ async def find_products_with_aggregated_sellers_with_features(
     db: AsyncSession,
     filters_json: Dict[str, Any]
 ) -> List[Dict[str, Any]]:
-    """
-    کالاها را بر اساس امتیاز ترکیبی (شباهت نام + تطابق ویژگی‌ها) پیدا کرده و مرتب‌سازی می‌کند.
-    """
+
     search_query_text = filters_json.get("search_query")
     structured_filters = filters_json.get("structured_filters", {})
 
-    # ---------- ۱. ساخت CTE برای فیلتر کردن فروشندگان (بدون تغییر) ----------
     seller_filters = []
     if "price_min" in structured_filters and structured_filters["price_min"] is not None:
         seller_filters.append(models.Member.price >= structured_filters["price_min"])
@@ -180,7 +177,6 @@ async def find_products_with_aggregated_sellers_with_features(
         .cte("filtered_sellers")
     )
 
-    # ---------- ۲. ساخت کوئری اصلی با منطق امتیازدهی نهایی ----------
 
     s_score_expr = literal_column("0.0").cast(Float)
     if search_query_text:
@@ -189,7 +185,6 @@ async def find_products_with_aggregated_sellers_with_features(
     feature_filters = structured_filters.get("features", {})
     f_score_expr = literal_column("0.0").cast(Float)
     if feature_filters:
-        # --- FIX 1: Changed [(...)] to ((...)) ---
         f_score_clauses = [
             case(
                 (models.BaseProduct.extra_features[key].as_string() == str(value), 1),
@@ -225,7 +220,6 @@ async def find_products_with_aggregated_sellers_with_features(
             ))
         
         if feature_filters:
-            # --- FIX 2: Changed [(...)] to ((...)) ---
             raw_feature_score_for_where = sum(
                  case((models.BaseProduct.extra_features[k].as_string() == str(v), 1), else_=0) 
                  for k, v in feature_filters.items()
@@ -276,7 +270,6 @@ async def find_similar_products(db: AsyncSession, product_name: str) -> List[Dic
     """
     similarity_score = func.similarity(models.BaseProduct.persian_name, product_name)
 
-    # 1. Select both columns: random_key and persian_name
     query = (
         select(
             models.BaseProduct.random_key,
@@ -292,14 +285,11 @@ async def find_similar_products(db: AsyncSession, product_name: str) -> List[Dic
 
     result = await db.execute(query)
     
-    # 2. Process the rows into a list of dictionaries
-    # We use result.all() instead of result.scalars() because we have multiple columns
     products_found = [
         {'id': row.random_key, 'product_name': row.persian_name}
         for row in result.all()
     ]
     
-    # 3. Return the list of dictionaries
     return products_found
 
 async def search_products_by_keywords(

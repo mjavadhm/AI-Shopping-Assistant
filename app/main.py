@@ -49,7 +49,7 @@ async def json_logging_middleware(request: Request, call_next):
         "request": request_body_json,
         "response": response_body_json,
         "openai_cost": openai_service.current_request_cost,
-        "scenario": scenario # <--- خواندن سناریو از request.state
+        "scenario": scenario
     }
 
     task = BackgroundTask(log_request_response, log_data=log_data)
@@ -77,7 +77,7 @@ def read_root():
 async def chat_handler(
     request: ChatRequest, 
     http_request: Request,
-    db: AsyncSession = Depends(get_db) # <--- Inject the DB session here
+    db: AsyncSession = Depends(get_db)
 ):
     """
     This endpoint handles the chat requests and implements the logic for different scenarios.

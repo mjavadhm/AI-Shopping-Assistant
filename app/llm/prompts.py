@@ -1281,7 +1281,7 @@ Analyze Conversation: Carefully read the entire text in the <conversation> tags.
 
 Analyze Feature Schema: Review the schema in the <feature_schema> tags. Note that the values in this schema (e.g., "15 lamps") are examples of the required format, not fixed values.
 
-Extract Search Query: Identify all descriptive keywords related to the product itself (name, brand, category, features, intended use). Combine these into a single string for the search_query field.
+Extract Search Query: Synthesize a concise, natural-sounding search query, as if a user were typing it into a search bar. This query should resemble a product title. Start with the core product name or category (e.g., "لوستر"). Then, append the most important descriptive attributes like style, type, or material (e.g., "دیواری", "پلاستیکی"). Convert numerical features into common descriptive terms (e.g., "یک لامپ" should become "تک شعله"). The final string should be a coherent phrase optimized for Full-Text Search, not just a list of keywords.
 
 Extract Standard Filters: Identify precise, structured data points for the main filters:
 
@@ -1349,7 +1349,7 @@ Input Conversation:
 
 <conversation>
 
-سلام، یه لوستر پلاستیکی میخوام که دیواری باشه و یه لامپ داشته باشه. حتما گارانتی داشته باشه و قیمتش هم زیر ۲ میلیون تومن باشه. در مورد ریموت کنترل نظری ندارم.
+سلام، وقت بخیر. من دنبال یه میز ناهارخوری چوبی می‌گردم که برای شش نفر مناسب باشه. خیلی مهمه که شکلش گرد باشه و پایه‌هاش فلزی باشه. ساکن تهران هستم و بودجه‌م هم حدود ۱۰ میلیون تومنه.
 
 </conversation>
 
@@ -1357,8 +1357,13 @@ Input Feature Schema:
 
 <feature_schema>
 
-{{"how_install": "دیواری", "product_shape": "خطی", "material": "الومینیوم", "lamp_number": "15 lamps", "has_remote": "no"}}
-
+{{
+"product_shape": "مستطیل",
+"material": "شیشه",
+"leg_material": "چوب",
+"capacity": "4 نفر",
+"has_chairs": "no"
+}}
 </feature_schema>
 
 Correct Output:
@@ -1367,31 +1372,21 @@ JSON
 
 
 
-{{
+{
+  "search_query": "میز ناهارخوری گرد چوبی شش نفره",
+  "structured_filters": {
+    "price_max": 10000000,
+    "city_name": "تهران",
+    "features": {
+      "material": "چوب",
+      "leg_material": "فلز",
+      "product_shape": "گرد",
+      "capacity": "6 نفر"
+    }
+  }
+}
 
-  "search_query": "لوستر پلاستیکی دیواری یک لامپ",
-
-  "structured_filters": {{
-
-    "price_max": 2000000,
-
-    "has_warranty": true,
-
-    "features": {{
-
-      "material": "پلاستیک",
-
-      "how_install": "دیواری",
-
-      "lamp_number": "1 lamps"
-
-    }}
-
-  }}
-
-}}
-
-(Note: product_shape and has_remote were omitted because the user did not specify them.)
+(Note: has_chairs were omitted because the user did not specify them.)
 
 ITEMS TO PROCESS
 

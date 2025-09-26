@@ -75,10 +75,8 @@ class BaseProduct(Base):
     extra_features = Column(JSONB)
     members = Column(JSONB)
 
-    # Add the new TSVECTOR column for full-text search
     persian_name_tsv = Column(TSVECTOR)
 
-    # Define the GIN index on the new column
     __table_args__ = (
         Index(
             'ix_base_products_persian_name_tsv',

@@ -420,7 +420,6 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
     user_message = request.messages[-1].content.strip()
     chat_id = request.chat_id
 
-    # 1. Get chat history from memory
     response =  "سلام اگه امکانش هست کامل توضیح بدید چی میخواید تا بتونم بهتر کمکتون کنم\nدرباره فروشنده گارانتی یا قیمت"
     session = scenario_4_sessions.get(chat_id)
     if not session:
@@ -442,7 +441,7 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
     elif session.state == 3:
         response, updated_session = await scenario_4_state_3(user_message, db, session)
         
-    elif session.state == 4: # <--- حالت جدید برای انتخاب فروشنده
+    elif session.state == 4:
         response, updated_session, is_done = await scenario_4_state_4(user_message, db, session)
         session = updated_session
         if is_done:
@@ -460,10 +459,10 @@ async def scenario_four_in_memory(request: ChatRequest, db) -> ChatResponse:
 async def scenario_4_state_1(user_message, db, session: Scenario4State):
     history = session.chat_history
     assistant_message = await simple_openai_gpt_request(
-        message=user_message,  # Send only the latest message
+        message=user_message,
         systemprompt=SCENARIO_FOUR_PROMPTS["system_prompt"],
         model="gpt-4.1-mini",
-        chat_history=history  # Pass the list of previous messages directly
+        chat_history=history
     )
     categories = await repository.get_all_categories(db)
     chosen_category = await simple_openai_gpt_request(
