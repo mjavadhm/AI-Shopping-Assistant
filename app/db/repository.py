@@ -10,7 +10,11 @@ from sqlalchemy.types import Float
 
 
 
-
+async def get_all_sellers_info(db: AsyncSession) -> List[models.Member]:
+    """
+    Fetches all sellers from the database.
+    """
+\
 async def get_all_categories(db: AsyncSession) -> List[models.Category]:
     """
     Fetches all categories from the database.
@@ -168,7 +172,7 @@ async def find_products_with_aggregated_sellers_with_features(
             func.jsonb_build_object(
                 'member_key', models.Member.random_key, 'price', models.Member.price,
                 'has_warranty', models.Shop.has_warranty, 'shop_score', models.Shop.score,
-                'city', models.City.name
+                'city', models.City.name, 'shop_id', models.Shop.id
             ).label("seller_data")
         )
         .join(models.Shop, models.Member.shop_id == models.Shop.id)

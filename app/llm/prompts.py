@@ -1025,7 +1025,7 @@ Analyze the user's response and the list of provided product options. Your goal 
 # INSTRUCTIONS
 - Identify the chosen product based on the user's message.
 - If the user's choice is clear, extract its full `product_name`.
-- If the user's response is ambiguous or does not match any option, the value must be `null`.
+- If the user said do not recommend anything, the output must be `null`.
 
 # EXAMPLE
 - **user_response:** "اجاق گاز اخوان مدل G114 به نظرم بهتره."
@@ -1033,7 +1033,19 @@ Analyze the user's response and the list of provided product options. Your goal 
 - **Correct Output:**
     ```json
     {{
-      "selected_product_name": "اجاق گاز اخوان شیشه ای مشکی G114"
+      "selected_product_name": "اجاق گاز اخوان شیشه ای مشکی G114",
+      "reason": "user exactly mentioned this product by name"
+    }}
+    ```
+    
+# EXAMPLE_2
+- **user_response:** "مثل اینکه مشکلی پیش امده. هیچکدام مورد قبول من نیست."
+- **product_options:** `[{{"product_name": "اجاق گاز اخوان شیشه ای مشکی V28", ...}}, {{"product_name": "اجاق گاز اخوان شیشه ای مشکی G114", ...}}]`
+- **Correct Output:**
+    ```json
+    {{
+      "selected_product_name": null,
+      "reason": "user explicitly stated no preference"
     }}
     ```
 """,
@@ -1054,9 +1066,9 @@ You have identified the product the user wants. Now, you need to present the lis
 3.  After listing the sellers, ask the user to make a choice. For example: "کدام یک از این فروشندگان را انتخاب می‌کنید؟"
 
 # EXAMPLE OUTPUT
-بسیار عالی! برای محصول «اجاق گاز اخوان شیشه ای مشکی G114» این فروشندگان در دسترس هستند:
-- فروشنده ۱: قیمت ۱۳,۷۱۴,۰۰۰ تومان، شهر: تهران، امتیاز: ۵.۰
-- فروشنده ۲: قیمت ۱۳,۷۱۴,۱۰۰ تومان، شهر: تهران، امتیاز: ۵.۰
+بسیار عالی! برای محصول «میز بیلیارد مدل g173» این فروشندگان در دسترس هستند:
+- فروشنده shop_id 1313: قیمت ۱۳,۷۱۴,۰۰۰ تومان، شهر: تهران، امتیاز: ۵.۰
+- فروشنده shop_id 1314: قیمت ۱۳,۷۱۴,۱۰۰ تومان، شهر: تهران، امتیاز: ۵.۰
 - و...
 
 کدام یک از این فروشندگان را برای شما انتخاب کنم؟
@@ -1281,7 +1293,7 @@ Analyze Conversation: Carefully read the entire text in the <conversation> tags.
 
 Analyze Feature Schema: Review the schema in the <feature_schema> tags. Note that the values in this schema (e.g., "15 lamps") are examples of the required format, not fixed values.
 
-Extract Search Query: Synthesize a concise, natural-sounding search query, as if a user were typing it into a search bar. This query should resemble a product title. Start with the core product name or category (e.g., "لوستر"). Then, append the most important descriptive attributes like style, type, or material (e.g., "دیواری", "پلاستیکی"). Convert numerical features into common descriptive terms (e.g., "یک لامپ" should become "تک شعله"). The final string should be a coherent phrase optimized for Full-Text Search, not just a list of keywords.
+Extract Search Query: Synthesize a concise, natural-sounding search query, as if a user were typing it into a search bar. This query should resemble a product title. Start with the core product name or category (e.g., "لوستر"). Then, append the most important descriptive attributes like brand, style, type, material or ... (e.g., "دیواری", "پلاستیکی"). The final string should be a coherent phrase optimized for Full-Text Search, not just a list of keywords.
 
 Extract Standard Filters: Identify precise, structured data points for the main filters:
 

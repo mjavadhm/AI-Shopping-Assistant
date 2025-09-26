@@ -634,20 +634,25 @@ async def scenario_4_state_3(user_message, db, session: Scenario4State):
     if not products_with_sellers:
         raise HTTPException(status_code=404, detail="No products found in previous steps.")
     
+    products_without_sellers = [
+    {key: value for key, value in product.items() if key != 'sellers'}
+    for product in products_with_sellers
+]
     system_prompt = SCENARIO_FOUR_PROMPTS["final_recommendation"]
     input_for_selection = {
         "user_response": user_message,
-        "product_options": str(products_with_sellers)
+        "product_options": str(products_without_sellers)
     }
     llm_response = await simple_openai_gpt_request(
         message=json.dumps(input_for_selection),
         systemprompt=system_prompt,
         model="gpt-4.1",
     )
+    logger.info(f"llm_response in state 3:\n{str(llm_response)}")
     
     json_from_llm = parse_llm_json_response(llm_response)
     selected_product_name = json_from_llm.get("selected_product_name")
-
+    
     if not selected_product_name:
         session.state = 2
         return await scenario_4_state_2(user_message, db, session)
