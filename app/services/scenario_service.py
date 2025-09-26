@@ -661,15 +661,14 @@ async def scenario_4_state_3(user_message, db, session: Scenario4State):
     selected_product = next((p for p in products_with_sellers if p['product_name'] == selected_product_name), None)
     
     if not selected_product:
-        selected_product = selected_product_name
         rkey = await find_exact_product_name_service(user_message = selected_product_name, db=db, possible_product_name=None)
-        selected_seller = await repository.get_members_with_details_by_base_random_key(db, rkey)
+        selected_product = await repository.get_product_with_sellers_by_base_random_key(db, rkey)
     session.selected_product = selected_product
     session.state = 4
 
     present_sellers_prompt = SCENARIO_FOUR_PROMPTS["present_sellers"].format(
         product_name=selected_product,
-        sellers_list=json.dumps(selected_seller, ensure_ascii=False)
+        sellers_list=json.dumps(selected_product['sellers'], ensure_ascii=False)
     )
     
     response_message = await simple_openai_gpt_request(

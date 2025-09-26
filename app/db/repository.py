@@ -457,10 +457,6 @@ async def get_shops_with_details_by_ids(db: AsyncSession, shop_ids: list[int]):
     return result.scalars().all()
 
 async def get_members_with_details_by_base_random_key(db: AsyncSession, base_random_key: str):
-    """
-    برای یک base_random_key خاص، لیست تمام اعضا (ممبرها) را به همراه جزئیات کامل 
-    فروشگاه و شهر به صورت JSON برمی‌گرداند. (نسخه غیرهمزمان)
-    """
     stmt = (
         select(
             models.Member.price,
@@ -488,3 +484,49 @@ async def get_members_with_details_by_base_random_key(db: AsyncSession, base_ran
         })
         
     return members_list
+
+
+async def get_product_with_sellers_by_base_random_key(db: AsyncSession, base_random_key: str):
+    product_stmt = select(models.BaseProduct).where(models.BaseProduct.random_key == base_random_key)
+    product_result = await db.execute(product_stmt)
+    product = product_result.scalar_one_or_none()
+
+    if not product:
+        return None
+
+    sellers_stmt = (
+        select(
+            models.Member.price,
+            models.Member.random_key.label("member_key"),
+            models.Shop.id.label("shop_id"),
+            models.Shop.has_warranty,
+            models.Shop.score,
+            models.City.name.label("city_name")
+        )
+        .join(models.Shop, models.Member.shop_id == models.Shop.id)
+        .join(models.City, models.Shop.city_id == models.City.id)
+        .where(models.Member.base_random_key == base_random_key)
+    )
+    
+    sellers_result = await db.execute(sellers_stmt)
+    sellers_rows = sellers_result.all()
+
+    sellers_list = []
+    for row in sellers_rows:
+        sellers_list.append({
+            "city": row.city_name,
+            "price": row.price,
+            "shop_id": row.shop_id,
+            "member_key": row.member_key,
+            "shop_score": row.score,
+            "has_warranty": row.has_warranty
+        })
+
+    final_response = {
+        "product_name": product.persian_name,
+        "product_features": product.extra_features,
+        "base_product_key": product.random_key,
+        "sellers": sellers_list
+    }
+        
+    return final_response
