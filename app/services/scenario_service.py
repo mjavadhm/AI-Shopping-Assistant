@@ -485,6 +485,12 @@ async def scenario_4_state_1(user_message, db, session: Scenario4State):
 async def scenario_4_state_2(user_message, db, session: Scenario4State):
 
     history = session.chat_history
+    history_str = ""
+    for chat in history:
+        if chat['role'] == 'user':
+            history_str += f"user: {chat['content']}"
+        else:
+            history_str += f"system: {chat['content']}"
 
     system_prompt_extract = SCENARIO_FOUR_PROMPTS["new_extract_info"].format(
         chat_history=str(history)
@@ -494,7 +500,7 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
     llm_response_str = await simple_openai_gpt_request(
         message="",
         systemprompt=system_prompt_extract,
-        model="gpt-4.1-mini", 
+        model="gpt-4.1", 
     )
 
     logger.info(f"\n{llm_response_str}")
@@ -504,9 +510,9 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
         filters_json = json.loads(json_str)
         
         search_query_text = filters_json.get("search_query")
-        search_res = await semantic_search(search_query_text)
+        # search_res = await semantic_search(search_query_text)
         # logger.info(search_res)
-        products_with_sellers = await repository.find_products_with_aggregated_sellers(db, filters_json)
+        products_with_sellers = await repository.find_products_with_aggregated_sellers_with_features(db, filters_json)
         session.products_with_sellers = products_with_sellers
         logger.info(f"products_with_sellers:\n{str(products_with_sellers)}")
     except (json.JSONDecodeError, IndexError) as e:
