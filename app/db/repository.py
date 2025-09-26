@@ -487,15 +487,11 @@ async def get_members_with_details_by_base_random_key(db: AsyncSession, base_ran
 
 
 async def get_product_with_sellers_by_base_random_key(db: AsyncSession, base_random_key: str):
-    product_stmt = select(models.BaseProduct).where(models.BaseProduct.random_key == base_random_key)
-    product_result = await db.execute(product_stmt)
-    product = product_result.scalar_one_or_none()
-
-    if not product:
-        return None
-
-    sellers_stmt = (
+    stmt = (
         select(
+            models.BaseProduct.persian_name,
+            models.BaseProduct.extra_features,
+            models.BaseProduct.random_key.label("base_product_key"),
             models.Member.price,
             models.Member.random_key.label("member_key"),
             models.Shop.id.label("shop_id"),
@@ -503,17 +499,29 @@ async def get_product_with_sellers_by_base_random_key(db: AsyncSession, base_ran
             models.Shop.score,
             models.City.name.label("city_name")
         )
+        .join(models.Member, models.BaseProduct.random_key == models.Member.base_random_key)
         .join(models.Shop, models.Member.shop_id == models.Shop.id)
         .join(models.City, models.Shop.city_id == models.City.id)
-        .where(models.Member.base_random_key == base_random_key)
+        .where(models.BaseProduct.random_key == base_random_key)
     )
     
-    sellers_result = await db.execute(sellers_stmt)
-    sellers_rows = sellers_result.all()
+    result = await db.execute(stmt)
+    all_rows = result.all()
 
-    sellers_list = []
-    for row in sellers_rows:
-        sellers_list.append({
+    if not all_rows:
+        return None
+
+    first_row = all_rows[0]
+    final_response = {
+        "product_name": first_row.persian_name,
+        "product_features": first_row.extra_features,
+        "base_product_key": first_row.base_product_key,
+        "sellers": []
+    }
+
+    # پیمایش در تمام ردیف‌ها برای ساخت لیست فروشندگان
+    for row in all_rows:
+        final_response["sellers"].append({
             "city": row.city_name,
             "price": row.price,
             "shop_id": row.shop_id,
@@ -521,12 +529,5 @@ async def get_product_with_sellers_by_base_random_key(db: AsyncSession, base_ran
             "shop_score": row.score,
             "has_warranty": row.has_warranty
         })
-
-    final_response = {
-        "product_name": product.persian_name,
-        "product_features": product.extra_features,
-        "base_product_key": product.random_key,
-        "sellers": sellers_list
-    }
         
     return final_response

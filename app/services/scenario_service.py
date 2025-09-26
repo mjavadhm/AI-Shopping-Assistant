@@ -505,7 +505,7 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
     llm_response_str = await simple_openai_gpt_request(
         message="",
         systemprompt=system_prompt_extract,
-        model="gpt-4.1", 
+        model="gpt-4.1-mini",
     )
 
     logger.info(f"\n{llm_response_str}")
@@ -560,7 +560,7 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
         recovery_response_str = await simple_openai_gpt_request(
             message=json.dumps(input_for_recovery_query),
             systemprompt=navigator_prompt,
-            model="gpt-4.1",
+            model="gpt-4.1-mini",
         )
         recovery_response_json = json.loads(recovery_response_str)
         
@@ -614,7 +614,7 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
     final_response_str = await simple_openai_gpt_request(
         message=json.dumps(input_for_navigator_prompt),
         systemprompt=navigator_prompt,
-        model="gpt-4.1",
+        model="gpt-4.1-mini",
     )
     
     logger.info(f"final_response_str:\n{str(final_response_str)}")
@@ -682,7 +682,8 @@ async def scenario_4_state_3(user_message, db, session: Scenario4State):
 async def scenario_4_state_4(user_message, db, session: Scenario4State):
     selected_product = session.selected_product
     if not selected_product:
-        raise HTTPException(status_code=404, detail="محصولی انتخاب نشده است.")
+        logger.error("محصولی انتخاب نشده است.")
+        await scenario_4_state_3(user_message, db, session)
 
     system_prompt = SCENARIO_FOUR_PROMPTS["select_seller"].format(
         user_response=user_message,
