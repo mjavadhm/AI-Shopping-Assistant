@@ -493,7 +493,8 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
             history_str += f"system: {chat['content']}"
 
     system_prompt_extract = SCENARIO_FOUR_PROMPTS["new_extract_info"].format(
-        chat_history=str(history)
+        chat_history=history_str,
+        feature_schema_json=session.product_features
     )
     
     
