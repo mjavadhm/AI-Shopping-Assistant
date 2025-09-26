@@ -150,20 +150,21 @@ The primary distinction between scenarios is whether the user has **specified a 
 **A) If the product is NOT specified:**
 *
 **SCENARIO_4_CONVERSATIONAL_SEARCH**: The user's query is about a **general need or a broad category**, and the specific product is not yet known. The user's goal is to **discover or explore options** to find a suitable product. This is the starting point of a shopping journey.
-    - *Example*: "I'm looking for a good chair", "Help me find a stove for my kitchen".
+    - *Example*: "I'm looking for a good chair", "Help me find a seller of stove for my kitchen".
+    user is not asking about numbers of sellers, user wants a seller for a product that is NOT specified!
 
 **B) If one or more concrete products ARE specified:**
 A product is considered "specified" if the query contains a **unique identifier** (model, code) or a **highly detailed, multi-attribute description**. Once a product is specified, the user can perform the following actions:
 
 *
 **SCENARIO_1_DIRECT_SEARCH**: The user's primary goal is simply to **find the specified product itself**.
-    - *Example*: "Find me the LG TV model 23", "Puff bench for three people with sponge upholstery".
+    - *Example*: "Find me the LG TV model 23 with free shipping", "Puff bench for three people with sponge upholstery".
     the user wants the item.
 
 *
 **SCENARIO_2_FEATURE_EXTRACTION**: The user asks for a **specific feature or attribute** about the specified product like its new or not.
     - *Example*: "What are the dimensions of the LG TV model 23?".
-    the use wants to know about a feature, not the item itself.
+    the use wants to know about a feature, not the item itself. the answer of the user is a describe from part of product like its new
 
 *
 **SCENARIO_3_SELLER_INFO**: The user asks about the **purchasing logistics** (price, sellers, warranty(گارانتی), member (عضو)) of the specified product.
