@@ -617,8 +617,8 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
         model="gpt-4.1",
     )
     
-    
-    final_response_json = json.loads(final_response_str)
+    logger.info(f"final_response_str:\n{str(final_response_str)}")
+    final_response_json = parse_llm_json_response(final_response_str)
     final_message = final_response_json.get("message", "متاسفانه مشکلی پیش آمده.")
 
     history.append({"role": "assistant", "content": final_message})
@@ -654,21 +654,21 @@ async def scenario_4_state_3(user_message, db, session: Scenario4State):
     selected_product_name = json_from_llm.get("selected_product_name")
     
     if not selected_product_name:
+        logger.warning("No product name selected by the user.")
         session.state = 2
         return await scenario_4_state_2(user_message, db, session)
 
     selected_product = next((p for p in products_with_sellers if p['product_name'] == selected_product_name), None)
     
     if not selected_product:
-        session.state = 2
-        return await scenario_4_state_2(user_message, db, session)
-
+        rkey = await find_exact_product_name_service(user_message = selected_product_name, db=db, possible_product_name=None)
+        selected_seller = await repository.get_members_with_details_by_base_random_key(db, rkey)
     session.selected_product = selected_product
     session.state = 4
 
     present_sellers_prompt = SCENARIO_FOUR_PROMPTS["present_sellers"].format(
-        product_name=selected_product['product_name'],
-        sellers_list=json.dumps(selected_product['sellers'], ensure_ascii=False)
+        product_name=selected_product,
+        sellers_list=json.dumps(selected_seller, ensure_ascii=False)
     )
     
     response_message = await simple_openai_gpt_request(
