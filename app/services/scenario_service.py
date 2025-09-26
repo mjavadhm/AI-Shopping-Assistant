@@ -661,6 +661,7 @@ async def scenario_4_state_3(user_message, db, session: Scenario4State):
     selected_product = next((p for p in products_with_sellers if p['product_name'] == selected_product_name), None)
     
     if not selected_product:
+        selected_product = selected_product_name
         rkey = await find_exact_product_name_service(user_message = selected_product_name, db=db, possible_product_name=None)
         selected_seller = await repository.get_members_with_details_by_base_random_key(db, rkey)
     session.selected_product = selected_product
