@@ -862,7 +862,7 @@ your output must be one of these categories only
 
 your output must be only the exact name of category without any quotes or formatting
 no explanations or extra text
-"""
+""",
     "extract_info": """# ROLE
 You are an expert AI assistant specialized in extracting structured data from user conversations.
 
@@ -925,9 +925,9 @@ You will be given a JSON object containing the following keys:
     - `"GENERATE_RECOVERY_QUERY"`: Used when the initial search found 0 results. This is the first recovery attempt.
     - `"GENERATE_CLARIFICATION_MESSAGE"`: Used when the recovery search also found 0 results. This is the second recovery attempt.
 - `search_results`: A list of product objects. Will be populated only in `HANDLE_SUCCESSFUL_RESULTS` mode.
-    - Example: `[{"name": "بخاری آبسال مدل X", "key_feature": "کمترین قیمت"}, {"name": "ایران شرق مدل Y"}]`
+    - Example: `[{{"name": "بخاری آبسال مدل X", "key_feature": "کمترین قیمت"}, {{"name": "ایران شرق مدل Y"}}}}]`
 - `last_search_parameters`: A JSON object containing the filters and query used in the last failed search.
-    - Example: `{"search_query": "بخاری کم مصرف اتاق بچه", "structured_filters": {"price_max": 3000000, "has_warranty": true}}`
+    - Example: `{{"search_query": "بخاری کم مصرف اتاق بچه", "structured_filters": {{"price_max": 3000000, "has_warranty": true}}}}`
 - `chat_history`: The conversation history, to provide context for generating new queries.
 
 # TASK
@@ -957,7 +957,7 @@ Based on the `action_mode`, perform the specified task and generate a single JSO
 - **Goal:** Inform the user that the search failed and ask them to relax a constraint.
 - **Steps:**
     1.  **Translate Filters:** Convert the JSON object in `last_search_parameters.structured_filters` into a human-readable, natural Persian sentence.
-        - **Example Input:** `{"price_max": 5000000, "city_name": "تهران", "has_warranty": true}`
+        - **Example Input:** `{{"price_max": 5000000, "city_name": "تهران", "has_warranty": true}}`
         - **Example Persian Output:** "با حداکثر قیمت ۵ میلیون تومان، در شهر تهران و دارای گارانتی"
     2.  **Construct Message:** Create a polite Persian message that:
         - States that no results were found for their query (`last_search_parameters.search_query`).
