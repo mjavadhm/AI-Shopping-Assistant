@@ -224,7 +224,7 @@ this part should NOT be in your output. use tools:
 2.  `extract_search(گوشی سامسونگ A54, گوشی شیائومی نوت 12 پرو)`
 
 
-**User Message:** "سلام! من دنبال یه اجاق گاز خوب می\u200cگردم که برای آشپزخونه\u200cام مناسب باشه. می\u200cتونید به من کمک کنید؟"
+**User Message:** "سلام! من دنبال فروشنده برای اجاق گاز خوب می‌گردم که برای آشپزخانه‌ام مناسب باشه. می‌تونید به من کمک کنید؟"
 **<reasoning>**
 The user is looking for recommendations for a "اجاق گاز خوب". They are using general adjectives like "خوب" and "مناسب" and are asking for help. They have not specified a particular product. This is a classic conversational search for recommendations, which fits SCENARIO_4.
 **</reasoning>**
