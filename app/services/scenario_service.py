@@ -529,13 +529,13 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
     navigator_prompt = SCENARIO_FOUR_PROMPTS["state_2_path"]
     input_for_navigator_prompt = {}
     
-
+    summarized_results = summarize_products_for_llm(products_with_sellers)
     # PATH A
     if 1 <= len(products_with_sellers) :
         logger.info("Path A: Success, 1-5 results found.")
         input_for_navigator_prompt = {
             "action_mode": "HANDLE_SUCCESSFUL_RESULTS",
-            "search_results": products_with_sellers, # فرض می‌کنیم فرمت این لیست مناسب است
+            "search_results": summarized_results,
             "last_search_parameters": filters_json,
             "chat_history": str(history)
         }
@@ -610,7 +610,7 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
         history.append({"role": "assistant", "content": final_message})
         
         return final_message, session
-
+    logger.info("timer")
     final_response_str = await simple_openai_gpt_request(
         message=json.dumps(input_for_navigator_prompt),
         systemprompt=navigator_prompt,
@@ -625,7 +625,16 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
     
     return final_message, session
     
-    
+def summarize_products_for_llm(products):
+    summarized_products = []
+    for product in products:
+        summarized_product = {
+            "product_name": product.get("product_name"),
+            "product_features": product.get("product_features"),
+        }
+        summarized_products.append(summarized_product)
+    return summarized_products
+
 async def scenario_4_state_3(user_message, db, session: Scenario4State):
     history = session.chat_history
     products_with_sellers = session.products_with_sellers
