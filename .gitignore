@@ -3,6 +3,7 @@ test_cases.log
 .vscode/
 data/
 test.py
+logs/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

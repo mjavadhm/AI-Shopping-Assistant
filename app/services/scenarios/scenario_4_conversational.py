@@ -19,7 +19,7 @@ def is_active_session(chat_id: str) -> bool:
     """Checks if a conversational session is currently active for the given chat_id."""
     return chat_id in _sessions
 
-async def handle(chat_id: str, user_message: str, db: AsyncSession) -> ChatResponse:
+async def handle(request, db: AsyncSession) -> ChatResponse:
     """
     Handles Scenario 4: Conversational Search.
 
@@ -36,6 +36,8 @@ async def handle(chat_id: str, user_message: str, db: AsyncSession) -> ChatRespo
         A ChatResponse object, which could be a message to the user or the
         final selected member keys.
     """
+    user_message = request.messages[-1].content.strip()
+    chat_id = request.chat_id
     session = _sessions.get(chat_id, Scenario4State())
     session.chat_history.append({"role": "user", "content": user_message})
 
