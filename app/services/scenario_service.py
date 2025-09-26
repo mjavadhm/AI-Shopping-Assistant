@@ -481,11 +481,13 @@ async def scenario_4_state_1(user_message, session: Scenario4State):
         model="gpt-4.1-mini",
         chat_history=history
     )
-    logger.info(f"Category selection response: {llm_response_selection}")
+    selection_json = parse_llm_json_response(llm_response_selection)
+    selected_title = selection_json.get("selected_category")
+    logger.info(f"Category selection response: {selected_title}")
     chosen_category = None
-    if llm_response_selection:
+    if selected_title:
         for category in categories:
-            if category.get('title') == llm_response_selection:
+            if category.get('title') == selected_title:
 
                 chosen_category = category
                 break
@@ -493,10 +495,10 @@ async def scenario_4_state_1(user_message, session: Scenario4State):
         feature_schema = chosen_category.get('feature_schema', {})
         schema_as_string = json.dumps(feature_schema, ensure_ascii=False)
         session.product_features = schema_as_string
-        logger.info(f"Successfully found category '{llm_response_selection}' and stored its schema.({schema_as_string})")
+        logger.info(f"Successfully found category '{selected_title}' and stored its schema.({schema_as_string})")
     else:
         session.product_features = "{}"
-        logger.warning(f"Could not find the selected category '{llm_response_selection}' in the search results. Storing empty schema.")
+        logger.warning(f"Could not find the selected category '{selected_title}' in the search results. Storing empty schema.")
         
     return assistant_message, session
 
