@@ -507,18 +507,14 @@ async def scenario_4_state_2(user_message, db, session: Scenario4State):
     logger.info(f"\n{llm_response_str}")
     try:
         
-        json_str = llm_response_str.split("```json")[1].split("```")[0].strip()
-        filters_json = json.loads(json_str)
+        filters_json = parse_llm_json_response(llm_response_str)
         
-        search_query_text = filters_json.get("search_query")
-        # search_res = await semantic_search(search_query_text)
-        # logger.info(search_res)
         products_with_sellers = await repository.find_products_with_aggregated_sellers_with_features(db, filters_json)
         session.products_with_sellers = products_with_sellers
         logger.info(f"products_with_sellers:\n{str(products_with_sellers)}")
     except (json.JSONDecodeError, IndexError) as e:
         
-        print(f"Error parsing LLM response: {e}")
+        logger.error(f"Error parsing LLM response: {e}")
         
         final_message = "متاسفانه در حال حاضر امکان پردازش درخواست شما وجود ندارد. لطفاً کمی دیگر دوباره تلاش کنید."
         
