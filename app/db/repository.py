@@ -456,13 +456,13 @@ async def get_shops_with_details_by_ids(db: AsyncSession, shop_ids: list[int]):
     result = await db.execute(query)
     return result.scalars().all()
 
-def get_members_with_details_by_base_random_key(db, base_random_key: str):
+async def get_members_with_details_by_base_random_key(db: AsyncSession, base_random_key: str):
     """
     برای یک base_random_key خاص، لیست تمام اعضا (ممبرها) را به همراه جزئیات کامل 
-    فروشگاه و شهر به صورت JSON برمی‌گرداند.
+    فروشگاه و شهر به صورت JSON برمی‌گرداند. (نسخه غیرهمزمان)
     """
-    results = (
-        db.query(
+    stmt = (
+        select(
             models.Member.price,
             models.Shop.id.label("shop_id"),
             models.Shop.has_warranty,
@@ -471,12 +471,14 @@ def get_members_with_details_by_base_random_key(db, base_random_key: str):
         )
         .join(models.Shop, models.Member.shop_id == models.Shop.id)
         .join(models.City, models.Shop.city_id == models.City.id)
-        .filter(models.Member.base_random_key == base_random_key)
-        .all()
+        .where(models.Member.base_random_key == base_random_key)
     )
+    
+    result = await db.execute(stmt)
+    rows = result.all()
 
     members_list = []
-    for row in results:
+    for row in rows:
         members_list.append({
             "price": row.price,
             "shop_id": row.shop_id,
